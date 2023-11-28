@@ -9,10 +9,13 @@
 }
 - (id)init;
 - (id)initWithBuffer:(const char*)buf;
+- (id)initWithString:(String*)str;
 - (id)initWithFormat:(const char*)fmt, ...;
 - (void)dealloc;
 - (char*)buffer;
 - (id)appendBuffer:(const char*)buf;
+- (id)setBuffer:(const char*)buf;
+- (id)setString:(String*)str;
 - (size_t)length;
 @end
 

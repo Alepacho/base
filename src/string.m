@@ -21,6 +21,11 @@ size_t string_cat(char* d, size_t n, char const* s) {
 // @private
 
 - (void)initBuffer:(const char*)buf {
+	if (self->buffer != nil) {
+		free(self->buffer);
+		self->buffer = nil;
+	}
+
 	const size_t length = strlen(buf);
 	self->buffer = (char*)malloc((length + 1) * sizeof(char));
 	if (self->buffer == nil) {
@@ -48,6 +53,14 @@ size_t string_cat(char* d, size_t n, char const* s) {
 	self = [self init];
 
 	[self initBuffer:buf];
+
+	return self;
+}
+
+- (id)initWithString:(String*)str {
+	self = [self init];
+
+	[self initBuffer:buffer];
 
 	return self;
 }
@@ -88,6 +101,28 @@ size_t string_cat(char* d, size_t n, char const* s) {
 
 	// scpy(self->buffer + offset, length, buf);
 	string_cat(self->buffer, size, buf);
+	return self;
+}
+
+- (id)setBuffer:(const char*)buf {
+	if (self->buffer != nil) {
+		free(self->buffer);
+		self->buffer = nil;
+	}
+
+	[self initBuffer:buf];
+
+	return self;
+}
+
+- (id)setString:(String*)str {
+	if (self->buffer != nil) {
+		free(self->buffer);
+		self->buffer = nil;
+	}
+
+	[self initBuffer:[str buffer]];
+
 	return self;
 }
 
