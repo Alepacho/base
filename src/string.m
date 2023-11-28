@@ -1,10 +1,20 @@
 #include "base/string.h"
 #include "base/system.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#if OS_WINDOWS
 #define string_copy strcpy_s
 #define string_cat	strcat_s
+#else
+size_t string_copy(char* d, size_t n, char const* s) {
+	return snprintf(d, n, "%s", s);
+}
+size_t string_cat(char* d, size_t n, char const* s) {
+	return snprintf(d, n, "%s%s", d, s);
+}
+#endif
 
 @implementation String
 
@@ -18,7 +28,6 @@
 	}
 	// [System debug:"buf: '%s'", buf];
 	// [System debug:"length: %zu", length];
-
 	string_copy(self->buffer, length + 1, buf);
 	// [System debug:"self->buffer: '%s'", self->buffer];
 }
