@@ -2,19 +2,21 @@
 #ifndef BASE_MAIN_H
 #define BASE_MAIN_H
 
-#define OS_WINDOWS NO
-#define OS_MACOS   NO
-#define OS_LINUX   NO
+#define OS_WINDOWS 0
+#define OS_MACOS   0
+#define OS_LINUX   0
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmacro-redefined"
 
 #if defined(__APPLE__)
-#define OS_MACOS YES
+#define OS_MACOS 1
 #elif defined(_WIN64) || defined(_WIN32)
-#define OS_WINDOWS YES
+#define OS_WINDOWS 1
 #elif defined(__linux__)
-#define OS_LINUX YES
+#define OS_LINUX 1
+#else
+#error "Unknown OS"
 #endif
 
 #pragma clang diagnostic pop
