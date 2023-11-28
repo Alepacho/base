@@ -24,5 +24,4 @@ PointerAlignment: Left
 
 SpacesBeforeTrailingComments: 1
 
-
 Cpp11BracedListStyle: false
