@@ -11,6 +11,14 @@
             "program": "${workspaceFolder}/bin/testin.exe",
             "args": [],
             "cwd": "${workspaceFolder}/bin/"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug (UNIX)",
+            "program": "${workspaceFolder}/bin/testin",
+            "args": [],
+            "cwd": "${workspaceFolder}/bin/"
         }
     ]
 }
