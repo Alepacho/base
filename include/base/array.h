@@ -20,7 +20,7 @@
 
 - (void)clear;
 
-- (void)push:(T)value;
+- (id)push:(T)value;
 - (void)pop;
 
 - (void)insert:(T)value;

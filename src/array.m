@@ -59,14 +59,15 @@
 	self->data = nil;
 }
 
-- (void)push:(id)value {
+- (id)push:(id)value {
 	if (self->used >= self->size) {
 		[self resize:self->size * 2];
 	}
 	// printf("used: %zu\n", used);
 	// printf("size: %zu\n", size);
-	self->data[self->used] = value;
+	id result = self->data[self->used] = value;
 	self->used++;
+	return result;
 }
 
 - (void)pop {
