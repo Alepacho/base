@@ -26,6 +26,8 @@ size_t string_cat(char* d, size_t n, char const* s) {
 		self->buffer = nil;
 	}
 
+	if (buf == nil) buf = "";
+
 	const size_t length = strlen(buf);
 	self->buffer = (char*)malloc((length + 1) * sizeof(char));
 	if (self->buffer == nil) {
@@ -43,7 +45,8 @@ size_t string_cat(char* d, size_t n, char const* s) {
 	self = [super init];
 
 	if (self) {
-		self->buffer = nil;
+		// [System trace:"new?"];
+		[self initBuffer:""];
 	}
 
 	return self;
@@ -60,7 +63,7 @@ size_t string_cat(char* d, size_t n, char const* s) {
 - (id)initWithString:(String*)str {
 	self = [self init];
 
-	[self initBuffer:buffer];
+	[self initBuffer:[str buffer]];
 
 	return self;
 }
