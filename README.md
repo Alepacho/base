@@ -3,13 +3,20 @@
 Base is a small collection of utilities for projects written in Objective-C.
 Base does not require Foundation framework (except for [macOS compatibility](https://github.com/Alepacho/base/blob/master/include/base/base.h)).
 
+## Features
+
+* Easy string manipulation
+* Simple Arrays
+* System related methods
+* Exception handling
+
 ## Usage
 
 Base requires follow dependencies:
 
 ```
     * clang (at least 16)
-    * libobj2 (for Windows and Linux obly)
+    * libobj2 (for Windows and Linux only)
     * ninja (you can use makefile also)
 ```
 
