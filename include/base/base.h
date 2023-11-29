@@ -11,6 +11,7 @@
 
 #if defined(__APPLE__)
 #define OS_MACOS 1
+#import <Foundation/Foundation.h>
 #elif defined(_WIN64) || defined(_WIN32)
 #define OS_WINDOWS 1
 #elif defined(__linux__)
@@ -27,16 +28,20 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wobjc-root-class"
 
+#if OS_MACOS
+@interface BaseObject : NSObject
+#else
+
 #ifndef __has_attribute
 #define __has_attribute(x) 0
 #endif
-
 #if __has_attribute(objc_root_class)
 __attribute__((objc_root_class))
 #endif
 @interface BaseObject {
 	id isa;
 }
+#endif
 
 + (id)alloc;
 - (void)dealloc;
