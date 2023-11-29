@@ -35,7 +35,7 @@
 @end
 
 int main(void) {
-	if (YES) {
+	if (NO) {
 		@throw [[Exception alloc] init];
 	}
 
@@ -133,13 +133,14 @@ int main(void) {
 		[System println:"Real size of array is: %i", [arr size]];
 	}
 
+	// retain/release test
 	if (YES) {
 		Cat* cat = [[Cat alloc] initHealth:150 initX:13 initY:37];
 		[arr push:cat];
 		[cat setX:55];
 
 		[arr remove:1];
-		// [arr pop];
+		[arr pop];
 		[cat setX:88];
 		for (size_t i = 0; i < [arr count]; i++) {
 			Entity* e = [arr getByIndex:i];

@@ -65,14 +65,14 @@
 	}
 	// printf("used: %zu\n", used);
 	// printf("size: %zu\n", size);
-	id result = self->data[self->used] = value;
+	id result = self->data[self->used] = [value retain];
 	self->used++;
 	return result;
 }
 
 - (void)pop {
 	if (self->used == 0) return;
-	[self->data[--self->used] dealloc];
+	[self->data[--self->used] release];
 }
 
 - (id)getByIndex:(size_t)index {
