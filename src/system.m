@@ -23,6 +23,15 @@
 	fprintf(stdout, "\n");
 }
 
++ (void)warning:(const char*)fmt, ... {
+	fprintf(stderr, "[%s]: ", "WARNING");
+	va_list args;
+	va_start(args, fmt);
+	vfprintf(stderr, fmt, args);
+	va_end(args);
+	fprintf(stderr, "\n");
+}
+
 + (void)error:(const char*)fmt, ... {
 	fprintf(stderr, "[%s]: ", "ERROR");
 	va_list args;
@@ -40,6 +49,7 @@
 	va_end(args);
 	fprintf(stderr, "\n");
 	exit(1);
+	// TODO: throw exception here?
 }
 
 + (void)echo:(const char*)msg {
