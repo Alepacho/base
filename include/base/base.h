@@ -24,6 +24,9 @@
 // https://github.com/gnustep/libs-base
 #include <objc/runtime.h>
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wobjc-root-class"
+
 #ifndef __has_attribute
 #define __has_attribute(x) 0
 #endif
@@ -39,7 +42,10 @@ __attribute__((objc_root_class))
 - (void)dealloc;
 
 - (id)init;
++ (id)new;
 
 @end
+
+#pragma clang diagnostic pop
 
 #endif // BASE_MAIN_H

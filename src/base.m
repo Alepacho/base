@@ -18,4 +18,8 @@
 	return self;
 }
 
++ (id)new {
+	return [[self alloc] init];
+}
+
 @end
