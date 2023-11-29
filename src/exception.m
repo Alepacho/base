@@ -60,7 +60,7 @@ int vs_string_length(const char* format, va_list pargs) {
 }
 
 - (const char*)message {
-	if ([self->message length] == 0) return "Unknown exception";
+	if ([self->message length] == 0) return "Unknown error";
 	return [self->message buffer];
 }
 
