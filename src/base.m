@@ -1,43 +1,45 @@
 #import "base/base.h"
 
-#include </objc/objc-exception.h>
+#include <objc/objc-exception.h>
 #include <stdio.h>
 
-#if OS_WINDOWS
-#include <Windows.h>
+#if OS_MACOS
 
+#elif OS_WINDOWS
+#include <Windows.h>
 LONG WINAPI
 _baseUnhandledExceptionFilter(struct _EXCEPTION_POINTERS* exceptionInfo) {
 	printf("windows!\n");
-	exit(0);
+	exit(1);
 }
-
+#elif OS_LINUX
+#else
+#error "OS not supported"
 #endif
 
+static void _baseUncaughtExceptionHandler(NSException* exception) {
+	printf("uncaught exception!\n");
+	exit(1);
+}
+
 void _mainBase(void) {
-#if OS_MACOS
-
-#else
-
 #if OS_WINDOWS
 	SetUnhandledExceptionFilter(&_baseUnhandledExceptionFilter);
 #endif
-
 	objc_setUncaughtExceptionHandler(_baseUncaughtExceptionHandler);
-#endif
-}
-
-void _baseUncaughtExceptionHandler(id exception) {
-	printf("uncaught exception!\n");
 }
 
 @implementation BaseObject
 
-#if OS_MACOS
+- (Class)class {
+	return [self class];
+}
 
 + (Class)class {
-	return [super class];
+	return self;
 }
+
+#if OS_MACOS
 
 + (id)alloc {
 	return [super alloc];
@@ -55,6 +57,18 @@ void _baseUncaughtExceptionHandler(id exception) {
 	return [super new];
 }
 
+- (id)autorelease {
+	return [super autorelease];
+}
+
+- (id)retain {
+	return [super retain];
+}
+
+- (void)release {
+	[super release];
+}
+
 + (BOOL)respondsToSelector:(SEL)selector {
 	return [super respondsToSelector:selector];
 }
@@ -64,10 +78,6 @@ void _baseUncaughtExceptionHandler(id exception) {
 }
 
 #else
-
-+ (Class)class {
-	return self;
-}
 
 + (id)alloc {
 	return class_createInstance(self, 0);
@@ -79,6 +89,16 @@ void _baseUncaughtExceptionHandler(id exception) {
 
 - (id)init {
 	return self;
+}
+
+- (id)autorelease {
+	return objc_autorelease(self);
+}
+- (id)retain {
+	return objc_retain(self);
+}
+- (void)release {
+	objc_release(self);
 }
 
 + (id)new {

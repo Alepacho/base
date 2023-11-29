@@ -20,7 +20,6 @@
 #error "Unknown OS"
 #endif
 
-void _baseUncaughtExceptionHandler(id exception);
 void _mainBase(void) __attribute__((constructor));
 
 #pragma clang diagnostic pop
@@ -46,11 +45,18 @@ __attribute__((objc_root_class))
 }
 #endif
 
+- (Class)class;
++ (Class)class;
+
 + (id)alloc;
 - (void)dealloc;
 
 - (id)init;
 + (id)new;
+
+- (id)autorelease;
+- (id)retain;
+- (void)release;
 
 + (BOOL)respondsToSelector:(SEL)selector;
 + (BOOL)instancesRespondToSelector:(SEL)selector;
