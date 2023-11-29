@@ -11,6 +11,7 @@
 }
 - (id)init;
 - (id)initWithFormat:(const char*)fmt, ...;
+- (id)initWithString:(String*)str;
 - (const char*)message;
 @end
 

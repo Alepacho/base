@@ -27,7 +27,7 @@ int vs_string_length(const char* format, va_list pargs) {
 	self = [super init];
 
 	if (self) {
-		self->message = [[String alloc] init];
+		self->message = [String new];
 	}
 
 	return self;
@@ -51,7 +51,16 @@ int vs_string_length(const char* format, va_list pargs) {
 	return self;
 }
 
+- (id)initWithString:(String*)str {
+	self = [self init];
+
+	[self->message setString:str];
+
+	return self;
+}
+
 - (const char*)message {
+	if ([self->message length] == 0) return "Unknown exception";
 	return [self->message buffer];
 }
 
