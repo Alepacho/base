@@ -45,6 +45,14 @@ int main(void) {
 		[System println:"Your character is: %c", ch];
 	}
 
+	if (YES) {
+		@try {
+			@throw [[Exception alloc] init];
+		} @catch (Exception* ex) {
+			[System warning:[ex message]];
+		}
+	}
+
 	// @try {
 	// 	[System input:name withLength:64];
 	// 	[System println:"Your name is: %s", name];
