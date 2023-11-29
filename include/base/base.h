@@ -20,6 +20,9 @@
 #error "Unknown OS"
 #endif
 
+void _baseUncaughtExceptionHandler(id exception);
+void _mainBase(void) __attribute__((constructor));
+
 #pragma clang diagnostic pop
 
 // https://github.com/gnustep/libs-base
@@ -48,6 +51,9 @@ __attribute__((objc_root_class))
 
 - (id)init;
 + (id)new;
+
++ (BOOL)respondsToSelector:(SEL)selector;
++ (BOOL)instancesRespondToSelector:(SEL)selector;
 
 @end
 

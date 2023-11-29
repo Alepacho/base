@@ -1,5 +1,36 @@
 #import "base/base.h"
 
+#include </objc/objc-exception.h>
+#include <stdio.h>
+
+#if OS_WINDOWS
+#include <Windows.h>
+
+LONG WINAPI
+_baseUnhandledExceptionFilter(struct _EXCEPTION_POINTERS* exceptionInfo) {
+	printf("windows!\n");
+	exit(0);
+}
+
+#endif
+
+void _mainBase(void) {
+#if OS_MACOS
+
+#else
+
+#if OS_WINDOWS
+	SetUnhandledExceptionFilter(&_baseUnhandledExceptionFilter);
+#endif
+
+	objc_setUncaughtExceptionHandler(_baseUncaughtExceptionHandler);
+#endif
+}
+
+void _baseUncaughtExceptionHandler(id exception) {
+	printf("uncaught exception!\n");
+}
+
 @implementation BaseObject
 
 #if OS_MACOS
@@ -24,6 +55,14 @@
 	return [super new];
 }
 
++ (BOOL)respondsToSelector:(SEL)selector {
+	return [super respondsToSelector:selector];
+}
+
++ (BOOL)instancesRespondToSelector:(SEL)selector {
+	return [super instancesRespondToSelector:selector];
+}
+
 #else
 
 + (Class)class {
@@ -44,6 +83,14 @@
 
 + (id)new {
 	return [[self alloc] init];
+}
+
++ (BOOL)respondsToSelector:(SEL)selector {
+	return class_respondsToSelector(object_getClass(self), selector);
+}
+
++ (BOOL)instancesRespondToSelector:(SEL)selector {
+	return class_respondsToSelector(self, selector);
 }
 
 #endif

@@ -35,6 +35,10 @@
 @end
 
 int main(void) {
+	if (YES) {
+		@throw [[Exception alloc] init];
+	}
+
 	[System debug:"%s", "This is a Debug Test!"];
 	[System trace:"%s", "This is a Trace Test!"];
 	// [System error:"%s\n", "This is an Error Test!"];
