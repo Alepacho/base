@@ -96,7 +96,6 @@
 }
 
 - (void)insert:(id)value byIndex:(size_t)index {
-	// [System fatal:"Unimplemented method '%s'!", "insert byIndex"];
 	@try {
 		if (index >= self->used)
 			@throw [[Exception alloc]
@@ -147,7 +146,6 @@
 
 	[self->data[index] dealloc];
 
-	// const size_t newSize = self->used - 1;
 	id* newData = malloc((self->size) * sizeof(id));
 	memcpy(newData, self->data, index * sizeof(id));
 
