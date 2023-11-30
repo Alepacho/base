@@ -8,7 +8,7 @@
             "type": "lldb",
             "request": "launch",
             "name": "Debug (Windows)",
-            "program": "${workspaceFolder}/bin/testin.exe",
+            "program": "${workspaceFolder}/bin/playground.exe",
             "args": [],
             "cwd": "${workspaceFolder}/bin/"
         },
@@ -16,7 +16,7 @@
             "type": "lldb",
             "request": "launch",
             "name": "Debug (UNIX)",
-            "program": "${workspaceFolder}/bin/testin",
+            "program": "${workspaceFolder}/bin/playground",
             "args": [],
             "cwd": "${workspaceFolder}/bin/"
         }
