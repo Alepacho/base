@@ -108,10 +108,6 @@ size_t string_cat(char* d, size_t n, char const* s) {
 }
 
 - (id)setBuffer:(const char*)buf {
-	if (self->buffer != nil) {
-		free(self->buffer);
-		self->buffer = nil;
-	}
 
 	[self initBuffer:buf];
 
