@@ -84,7 +84,7 @@
 							   self->used];
 	} @catch (Exception* ex) {
 		[System error:"%s\n", [ex message]];
-		[ex dealloc];
+		[ex release];
 		return nil;
 	}
 
@@ -104,7 +104,7 @@
 							   self->used];
 	} @catch (Exception* ex) {
 		[System error:"%s\n", [ex message]];
-		[ex dealloc];
+		[ex release];
 		return;
 	}
 
@@ -140,11 +140,11 @@
 							   "Array is empty"];
 	} @catch (Exception* ex) {
 		[System error:"%s\n", [ex message]];
-		[ex dealloc];
+		[ex release];
 		return;
 	}
 
-	[self->data[index] dealloc];
+	[self->data[index] release];
 
 	id* newData = malloc((self->size) * sizeof(id));
 	memcpy(newData, self->data, index * sizeof(id));
