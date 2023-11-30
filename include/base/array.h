@@ -29,6 +29,9 @@
 - (void)remove;
 - (void)remove:(size_t)index;
 
+- (T)getFirst;
+- (T)getLast;
+- (T)getByObject:(T)object;
 - (T)getByIndex:(size_t)index;
 @end
 

@@ -75,6 +75,54 @@
 	[self->data[--self->used] release];
 }
 
+- (id)getFirst {
+	@try {
+		if ([self count] == 0)
+			@throw [[Exception alloc]
+				initWithFormat:"Unable to get first array element: %s!",
+							   "Array is empty"];
+	} @catch (Exception* ex) {
+		[System error:"%s\n", [ex message]];
+		[ex release];
+		return nil;
+	}
+
+	return self->data[0];
+}
+
+- (id)getLast {
+	@try {
+		if ([self count] == 0)
+			@throw [[Exception alloc]
+				initWithFormat:"Unable to get first array element: %s!",
+							   "Array is empty"];
+	} @catch (Exception* ex) {
+		[System error:"%s\n", [ex message]];
+		[ex release];
+		return nil;
+	}
+
+	return self->data[[self count] - 1];
+}
+
+- (id)getByObject:(id)object {
+	@try {
+		if (object == nil)
+			@throw [[Exception alloc]
+				initWithFormat:"Unable to get array element: %s!",
+							   "Object is nil"];
+	} @catch (Exception* ex) {
+		[System error:"%s\n", [ex message]];
+		[ex release];
+		return nil;
+	}
+
+	for (size_t i = 0; i < [self count]; i++) {
+		if (self->data[i] == object) return self->data[i];
+	}
+	return nil;
+}
+
 - (id)getByIndex:(size_t)index {
 	@try {
 		if (index >= self->used)
