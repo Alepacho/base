@@ -58,8 +58,11 @@ __attribute__((objc_root_class))
 - (id)retain;
 - (void)release;
 
-+ (BOOL)respondsToSelector:(SEL)selector;
-+ (BOOL)instancesRespondToSelector:(SEL)selector;
+// - (id)copy;
+
+// TODO: should I keep it?
+// + (BOOL)respondsToSelector:(SEL)selector;
+// + (BOOL)instancesRespondToSelector:(SEL)selector;
 
 @end
 

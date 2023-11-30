@@ -39,6 +39,18 @@ void _mainBase(void) {
 	return self;
 }
 
+- (id)init {
+	return self;
+}
+
++ (id)new {
+	return [[self alloc] init];
+}
+
+// - (id)copy {
+// 	return [self retain];
+// }
+
 #if OS_MACOS
 
 + (id)alloc {
@@ -47,14 +59,6 @@ void _mainBase(void) {
 
 - (void)dealloc {
 	[super dealloc];
-}
-
-- (id)init {
-	return [super init];
-}
-
-+ (id)new {
-	return [super new];
 }
 
 - (id)autorelease {
@@ -69,13 +73,13 @@ void _mainBase(void) {
 	[super release];
 }
 
-+ (BOOL)respondsToSelector:(SEL)selector {
-	return [super respondsToSelector:selector];
-}
+// + (BOOL)respondsToSelector:(SEL)selector {
+// 	return [super respondsToSelector:selector];
+// }
 
-+ (BOOL)instancesRespondToSelector:(SEL)selector {
-	return [super instancesRespondToSelector:selector];
-}
+// + (BOOL)instancesRespondToSelector:(SEL)selector {
+// 	return [super instancesRespondToSelector:selector];
+// }
 
 #else
 
@@ -85,10 +89,6 @@ void _mainBase(void) {
 
 - (void)dealloc {
 	object_dispose(self);
-}
-
-- (id)init {
-	return self;
 }
 
 - (id)autorelease {
@@ -101,17 +101,13 @@ void _mainBase(void) {
 	objc_release(self);
 }
 
-+ (id)new {
-	return [[self alloc] init];
-}
+// + (BOOL)respondsToSelector:(SEL)selector {
+// 	return class_respondsToSelector(object_getClass(self), selector);
+// }
 
-+ (BOOL)respondsToSelector:(SEL)selector {
-	return class_respondsToSelector(object_getClass(self), selector);
-}
-
-+ (BOOL)instancesRespondToSelector:(SEL)selector {
-	return class_respondsToSelector(self, selector);
-}
+// + (BOOL)instancesRespondToSelector:(SEL)selector {
+// 	return class_respondsToSelector(self, selector);
+// }
 
 #endif
 @end
