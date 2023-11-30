@@ -1,5 +1,6 @@
 #import "base/base.h"
 
+#include <objc/objc-arc.h>
 #include <objc/objc-exception.h>
 #include <stdio.h>
 
@@ -17,7 +18,7 @@ _baseUnhandledExceptionFilter(struct _EXCEPTION_POINTERS* exceptionInfo) {
 #error "OS not supported"
 #endif
 
-static void _baseUncaughtExceptionHandler(NSException* exception) {
+static void _baseUncaughtExceptionHandler(id exception) {
 	printf("uncaught exception!\n");
 	exit(1);
 }
