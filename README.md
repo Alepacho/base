@@ -62,7 +62,9 @@ $ cmake ..
 $ make
 ```
 
-##
+## Playground
+
+If you want to test something, use `test/` project.
 
 ## License
 
