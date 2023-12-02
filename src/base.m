@@ -96,10 +96,14 @@ void _mainBase(void) {
 	return objc_autorelease(self);
 }
 - (id)retain {
-	return objc_retain(self);
+	refcount++;
+	return self; // objc_retain(self);
 }
 - (void)release {
-	objc_release(self);
+	if (refcount == 0)
+		object_dispose(self); // objc_release(self);
+	else
+		refcount--;
 }
 
 // + (BOOL)respondsToSelector:(SEL)selector {

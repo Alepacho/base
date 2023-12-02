@@ -36,14 +36,15 @@ void _mainBase(void) __attribute__((constructor));
 
 #ifndef __has_attribute
 #define __has_attribute(x) 0
-#endif
+#endif // __has_attribute
 #if __has_attribute(objc_root_class)
 __attribute__((objc_root_class))
-#endif
+#endif // __has_attribute(objc_root_class)
 @interface BaseObject {
 	id isa;
+	int refcount;
 }
-#endif
+#endif // OS_MACOS
 
 - (Class)class;
 + (Class)class;

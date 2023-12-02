@@ -49,7 +49,7 @@ int main(void) {
 		[System println:"Your character is: %c", ch];
 	}
 
-	if (YES) {
+	if (NO) {
 		@try {
 			@throw [[Exception alloc] init];
 		} @catch (Exception* ex) {
@@ -77,7 +77,7 @@ int main(void) {
 
 	Array<Entity*>* arr = [[Array alloc] init];
 	// Array<Entity*>* arr = [Array alloc];
-	// [System debug:"count: %i", [arr count]];
+	[System debug:"count: %i", [arr count]];
 
 	[arr push:[[Entity alloc] initX:4 initY:2]];
 	[arr push:[[Entity alloc] initX:2 initY:4]];

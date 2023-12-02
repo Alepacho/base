@@ -8,5 +8,4 @@
 #include "string.h"
 #include "system.h"
 
-
 #endif // BASE_ALL_H

@@ -11,10 +11,12 @@ set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O2")
 
 if(NOT APPLE)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fobjc-runtime=gnustep-2.0 -fuse-ld=lld")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fblocks -fobjc-exceptions -fexceptions -fno-strict-aliasing")
 endif()
 
-set(BASE_DIR ${CMAKE_CURRENT_LIST_DIR}/../)
 set(SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/src/)
+set(BASE_DIR ${CMAKE_CURRENT_LIST_DIR}/../)
+set(BASE_INC_DIR ${BASE_DIR}/include/)
 set(BASE_LIB_DIR ${BASE_DIR}/lib/)
 
 link_directories(${BASE_LIB_DIR})
@@ -28,7 +30,7 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 
 target_include_directories(${PROJECT_NAME}
     PUBLIC
-    ${BASE_DIR}include
+    ${BASE_INC_DIR}
 )
 
 target_link_libraries(${PROJECT_NAME}

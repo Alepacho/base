@@ -12,6 +12,7 @@ set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O2")
 
 if(NOT APPLE)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fobjc-runtime=gnustep-2.0 -fuse-ld=lld")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fblocks -fobjc-exceptions -fexceptions -fno-strict-aliasing")
 
     # set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Xclang -fblocks -Xclang -fobjc-exceptions -Xclang -fexceptions -fno-strict-aliasing")
     # set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DGNUSTEP -DGNUSTEP_BASE_LIBRARY=1 -DGNU_GUI_LIBRARY=1 -DGNU_RUNTIME=1 -DGNUSTEP_BASE_LIBRARY=1 -DGNUSTEP_WITH_DLL")
