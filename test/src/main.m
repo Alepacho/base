@@ -150,5 +150,8 @@ int main(void) {
 		[System debug:"Cat's health: %i", [cat health]];
 	}
 
+	[System println:"%s", "Change the world. My final message!"];
+	[System println:"%s", "Goodbye..."];
+
 	return 0;
 }
