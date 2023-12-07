@@ -9,16 +9,7 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmacro-redefined"
 
-#if defined(__APPLE__)
-#define OS_MACOS 1
-#import <Foundation/Foundation.h>
-#elif defined(_WIN64) || defined(_WIN32)
-#define OS_WINDOWS 1
-#elif defined(__linux__)
-#define OS_LINUX 1
-#else
-#error "Unknown OS"
-#endif
+#include "os.h"
 
 void _mainBase(void) __attribute__((constructor));
 
