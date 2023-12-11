@@ -101,7 +101,7 @@ void _mainBase(void) {
 }
 - (void)release {
 	if (refcount == 0)
-		object_dispose(self); // objc_release(self);
+		[self dealloc]; // objc_release(self);
 	else
 		refcount--;
 }
