@@ -17,6 +17,7 @@
 - (id)setBuffer:(const char*)buf;
 - (id)setString:(String*)str;
 - (size_t)length;
+- (BOOL)compareBuffer:(const char*)buf;
 @end
 
 #endif // BASE_STRING_H

@@ -129,4 +129,11 @@ size_t string_cat(char* d, size_t n, char const* s) {
 	return strlen(self->buffer);
 }
 
+- (BOOL)compareBuffer:(const char*)buf {
+	// printf("'%s'\n", buf);
+	// printf("'%s'\n", buffer);
+	// printf("%i\n", (strncmp(buffer, buf, [self length]) == 0));
+	return (strncmp(buffer, buf, [self length]) == 0) ? YES : NO;
+}
+
 @end
