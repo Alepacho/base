@@ -65,7 +65,7 @@ __attribute__((objc_root_class))
 #define Size BaseSize
 #endif
 
-typedef unsigned long Size;
+typedef unsigned long long Size;
 
 @interface Number : BaseObject {
 	Size value;

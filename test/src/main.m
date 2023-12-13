@@ -196,7 +196,7 @@ int main(void) {
 			[System debug:"Number[%lu]: %lu ", i, [n value]];
 		}
 
-		[Array dealloc];
+		[arrn dealloc];
 	}
 
 	[System println:"%s", "Change the world. My final message!"];
