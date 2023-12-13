@@ -10,6 +10,8 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wall -g -O0")
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O2")
 
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-objc-arc")
+
 if(NOT APPLE)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fobjc-runtime=gnustep-2.0 -fuse-ld=lld")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fblocks -fobjc-exceptions -fexceptions -fno-strict-aliasing")

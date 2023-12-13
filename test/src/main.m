@@ -34,6 +34,15 @@
 }
 @end
 
+BOOL array_sort(Number* a, Number* b) {
+	// if ([a value] != 5) return NO;
+	// if ([a value] == 6) return YES;
+	// if ([a value] == 7) return YES;
+	// if ([a value] == 5) return YES;
+	// if ([b value] == 5) return YES;
+	return [a value] > [b value];
+}
+
 int main(void) {
 	if (NO) {
 		@throw [[Exception alloc] init];
@@ -137,17 +146,57 @@ int main(void) {
 	if (YES) {
 		Cat* cat = [[Cat alloc] initHealth:150 initX:13 initY:37];
 		[arr push:cat];
-		[cat setX:55];
+		// [cat setX:55];
 
 		[arr remove:1];
 		[arr pop];
-		[cat setX:88];
+		// [cat setX:88];
 		for (size_t i = 0; i < [arr count]; i++) {
 			Entity* e = [arr getByIndex:i];
 			[System debug:"Entity[%lu]: { .x = %f, .y = %f }", i, [e x], [e y]];
 		}
 
-		[System debug:"Cat's health: %i", [cat health]];
+		// [System debug:"Cat's health: %i", [cat health]];
+	}
+
+	// array swap
+	if (YES) {
+		Array<Number*>* arrn = [Array new];
+		[arrn push:[[Number alloc] initValue:1]];
+		[arrn push:[[Number alloc] initValue:2]];
+		[arrn push:[[Number alloc] initValue:3]];
+
+		[arrn swap:1 to:2];
+
+		for (Size i = 0; i < [arrn count]; i++) {
+			Number* n = [arrn getByIndex:i];
+			[System debug:"Number[%lu]: %lu ", i, [n value]];
+		}
+
+		[arrn dealloc];
+	}
+
+	// array sort
+	if (YES) {
+		[System debug:"Array sort test"];
+
+		Array<Number*>* arrn = [Array new];
+		[arrn push:[[Number alloc] initValue:5]];
+		[arrn push:[[Number alloc] initValue:6]];
+		[arrn push:[[Number alloc] initValue:22]];
+		[arrn push:[[Number alloc] initValue:7]];
+		[arrn push:[[Number alloc] initValue:19]];
+		[arrn push:[[Number alloc] initValue:63]];
+		[arrn push:[[Number alloc] initValue:1]];
+
+		[arrn sort:array_sort];
+
+		for (Size i = 0; i < [arrn count]; i++) {
+			Number* n = [arrn getByIndex:i];
+			[System debug:"Number[%lu]: %lu ", i, [n value]];
+		}
+
+		[Array dealloc];
 	}
 
 	[System println:"%s", "Change the world. My final message!"];

@@ -4,6 +4,8 @@
 
 #include "base.h"
 
+typedef BOOL (*_BaseSortFn)(id a, id b);
+
 // * subtypes are acceptable
 @interface Array<__covariant T> : BaseObject {
 	T* data;
@@ -28,6 +30,9 @@
 
 - (void)remove;
 - (void)remove:(size_t)index;
+
+- (void)swap:(size_t)a to:(size_t)b;
+- (id)sort:(_BaseSortFn)func;
 
 - (T)getFirst;
 - (T)getLast;
