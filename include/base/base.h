@@ -1,4 +1,5 @@
 #pragma once
+
 #ifndef BASE_MAIN_H
 #define BASE_MAIN_H
 
@@ -37,7 +38,7 @@ __attribute__((objc_root_class))
 }
 #endif // OS_MACOS
 
-- (Class)class;
+// - (Class)class;
 + (Class)class;
 
 + (id)alloc;
@@ -59,5 +60,23 @@ __attribute__((objc_root_class))
 @end
 
 #pragma clang diagnostic pop
+
+#if OS_MACOS
+#define Size BaseSize
+#endif
+
+typedef unsigned long Size;
+
+@interface Number : BaseObject {
+	Size value;
+}
+
+- (id)init;
+- (id)initValue:(Size)newValue;
+
+- (Size)value;
+- (id)set:(Size)newValue;
+
+@end
 
 #endif // BASE_MAIN_H

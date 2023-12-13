@@ -1,6 +1,11 @@
 #import "base/base.h"
 
-#include <objc/objc-arc.h>
+#if OS_MACOS
+
+#else
+#import <objc/objc-arc.h>
+#endif
+
 #include <objc/objc-exception.h>
 #include <stdio.h>
 
@@ -32,9 +37,9 @@ void _mainBase(void) {
 
 @implementation BaseObject
 
-- (Class)class {
-	return [self class];
-}
+// - (Class)class {
+// 	return [self class];
+// }
 
 + (Class)class {
 	return self;
@@ -115,4 +120,32 @@ void _mainBase(void) {
 // }
 
 #endif
+@end
+
+@implementation Number
+
+- (id)init {
+	self = [super init];
+	if (self) {
+		self->value = 0;
+	}
+	return self;
+}
+
+- (id)initValue:(size_t)newValue {
+	self = [super init];
+	if (self) {
+		self->value = newValue;
+	}
+	return self;
+}
+
+- (size_t)value {
+	return value;
+}
+- (id)set:(size_t)newValue {
+	value = newValue;
+	return self;
+}
+
 @end
