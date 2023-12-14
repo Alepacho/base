@@ -132,7 +132,7 @@ void _mainBase(void) {
 	return self;
 }
 
-- (id)initValue:(size_t)newValue {
+- (id)initValue:(Size)newValue {
 	self = [super init];
 	if (self) {
 		self->value = newValue;
@@ -140,10 +140,10 @@ void _mainBase(void) {
 	return self;
 }
 
-- (size_t)value {
+- (Size)value {
 	return value;
 }
-- (id)set:(size_t)newValue {
+- (id)set:(Size)newValue {
 	value = newValue;
 	return self;
 }
