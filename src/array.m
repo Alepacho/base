@@ -81,8 +81,24 @@
 	for (size_t i = 0; i < [self count]; i++) {
 		[self pop];
 	}
-	free(self->data);
-	self->data = nil;
+
+	if (self->data != nil) {
+		free(self->data);
+		self->data = nil;
+	}
+}
+
+- (void)clear:(BOOL)withDealloc {
+	if (withDealloc) {
+		for (size_t i = 0; i < [self count]; i++) {
+			[self pop];
+		}
+	}
+	self->size = self->used = 0;
+	if (self->data != nil) {
+		free(self->data);
+		self->data = nil;
+	}
 }
 
 - (id)push:(id)value {

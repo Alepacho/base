@@ -21,6 +21,7 @@ typedef BOOL (*_BaseSortFn)(id a, id b);
 - (size_t)size;
 
 - (void)clear;
+- (void)clear:(BOOL)withDealloc;
 
 - (id)push:(T)value;
 - (void)pop;
