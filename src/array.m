@@ -62,7 +62,7 @@
 }
 
 - (void)dealloc {
-	if (self->data != nil) {
+	if (self->used != 0 && self->data != nil) {
 		[self clear];
 	}
 
