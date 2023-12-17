@@ -87,6 +87,10 @@ void _mainBase(void) {
 // 	return [super instancesRespondToSelector:selector];
 // }
 
+- (BOOL)isKindOfClass:(Class)aClass {
+	return [super isKindOfClass:aClass];
+}
+
 #else
 
 + (id)alloc {

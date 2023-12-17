@@ -34,6 +34,24 @@
 }
 @end
 
+@interface Dog : Entity {
+	int bitePower;
+}
+- (id)init;
+@end
+
+@implementation Dog
+- (id)init {
+	self = [super init];
+
+	if (self) {
+		self->bitePower = 100;
+	}
+
+	return self;
+}
+@end
+
 BOOL array_sort(Number* a, Number* b) {
 	// if ([a value] != 5) return NO;
 	// if ([a value] == 6) return YES;
@@ -51,6 +69,24 @@ int main(void) {
 	[System debug:"%s", "This is a Debug Test!"];
 	[System trace:"%s", "This is a Trace Test!"];
 	// [System error:"%s\n", "This is an Error Test!"];
+
+	if (YES) {
+		Cat* cat = [Cat new];
+		Dog* dog = [Dog new];
+		Entity* ent = [Entity new];
+
+		[System debug:"Cat is Cat: %i", [cat isKindOfClass:[cat class]]];
+		[System debug:"Cat is Ent: %i", [cat isKindOfClass:[ent class]]];
+		[System debug:"Ent is Cat: %i", [ent isKindOfClass:[cat class]]];
+		[System debug:"Cat is Dog: %i", [cat isKindOfClass:[dog class]]];
+		[System debug:"Dog is Cat: %i", [dog isKindOfClass:[cat class]]];
+		[System debug:"Dog is Ent: %i", [dog isKindOfClass:[ent class]]];
+		[System debug:"Ent is Dog: %i", [ent isKindOfClass:[dog class]]];
+
+		[ent dealloc];
+		[dog dealloc];
+		[cat dealloc];
+	}
 
 	if (NO) {
 		[System print:"Enter character: "];

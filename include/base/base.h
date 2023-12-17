@@ -57,6 +57,8 @@ __attribute__((objc_root_class))
 // + (BOOL)respondsToSelector:(SEL)selector;
 // + (BOOL)instancesRespondToSelector:(SEL)selector;
 
+- (BOOL)isKindOfClass:(Class)aClass;
+
 @end
 
 #pragma clang diagnostic pop
