@@ -38,8 +38,8 @@ __attribute__((objc_root_class))
 }
 #endif // OS_MACOS
 
-// - (Class)class;
 + (Class)class;
+- (Class)class;
 
 + (id)alloc;
 - (void)dealloc;
@@ -57,7 +57,11 @@ __attribute__((objc_root_class))
 // + (BOOL)respondsToSelector:(SEL)selector;
 // + (BOOL)instancesRespondToSelector:(SEL)selector;
 
-- (BOOL)isKindOfClass:(Class)aClass;
+// + (BOOL)isKindOfClass:(Class)aClass;
+// - (BOOL)isKindOfClass:(Class)aClass;
+
++ (BOOL)isMemberOfClass:(Class)aClass;
+- (BOOL)isMemberOfClass:(Class)aClass;
 
 @end
 

@@ -75,13 +75,14 @@ int main(void) {
 		Dog* dog = [Dog new];
 		Entity* ent = [Entity new];
 
-		[System debug:"Cat is Cat: %i", [cat isKindOfClass:[cat class]]];
-		[System debug:"Cat is Ent: %i", [cat isKindOfClass:[ent class]]];
-		[System debug:"Ent is Cat: %i", [ent isKindOfClass:[cat class]]];
-		[System debug:"Cat is Dog: %i", [cat isKindOfClass:[dog class]]];
-		[System debug:"Dog is Cat: %i", [dog isKindOfClass:[cat class]]];
-		[System debug:"Dog is Ent: %i", [dog isKindOfClass:[ent class]]];
-		[System debug:"Ent is Dog: %i", [ent isKindOfClass:[dog class]]];
+		[System debug:"Cat is Cat: %i", [cat isMemberOfClass:[cat class]]];
+		[System debug:"Cat is Cat: %i", [cat isMemberOfClass:[Cat class]]];
+		[System debug:"Cat is Ent: %i", [cat isMemberOfClass:[ent class]]];
+		[System debug:"Ent is Cat: %i", [ent isMemberOfClass:[cat class]]];
+		[System debug:"Cat is Dog: %i", [cat isMemberOfClass:[dog class]]];
+		[System debug:"Dog is Cat: %i", [dog isMemberOfClass:[cat class]]];
+		[System debug:"Dog is Ent: %i", [dog isMemberOfClass:[ent class]]];
+		[System debug:"Ent is Dog: %i", [ent isMemberOfClass:[dog class]]];
 
 		[ent dealloc];
 		[dog dealloc];

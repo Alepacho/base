@@ -35,11 +35,15 @@ void _mainBase(void) {
 	objc_setUncaughtExceptionHandler(_baseUncaughtExceptionHandler);
 }
 
-@implementation BaseObject
-
-// - (Class)class {
-// 	return [self class];
+// BOOL baseIsKindOfClass(Class s, Class a) {
+// 	while (s != Nil) {
+// 		if (s == a) return YES;
+// 		s = class_getSuperclass(a);
+// 	}
+// 	return NO;
 // }
+
+@implementation BaseObject
 
 + (Class)class {
 	return self;
@@ -58,6 +62,10 @@ void _mainBase(void) {
 // }
 
 #if OS_MACOS
+
+- (Class)class {
+	return [super class];
+}
 
 + (id)alloc {
 	return [super alloc];
@@ -87,11 +95,23 @@ void _mainBase(void) {
 // 	return [super instancesRespondToSelector:selector];
 // }
 
-- (BOOL)isKindOfClass:(Class)aClass {
-	return [super isKindOfClass:aClass];
+// - (BOOL)isKindOfClass:(Class)aClass {
+// 	return [super isKindOfClass:aClass];
+// }
+
++ (BOOL)isMemberOfClass:(Class)aClass {
+	return [super isMemberOfClass:aClass];
+}
+
+- (BOOL)isMemberOfClass:(Class)aClass {
+	return [super isMemberOfClass:aClass];
 }
 
 #else
+
+- (Class)class {
+	return object_getClass(self);
+}
 
 + (id)alloc {
 	return class_createInstance(self, 0);
@@ -122,6 +142,23 @@ void _mainBase(void) {
 // + (BOOL)instancesRespondToSelector:(SEL)selector {
 // 	return class_respondsToSelector(self, selector);
 // }
+
+// + (BOOL)isKindOfClass:(Class)aClass {
+// 	return (aClass == [BaseObject class]) ? YES : NO;
+// }
+
+// - (BOOL)isKindOfClass:(Class)aClass {
+// 	Class class = object_getClass(self);
+// 	return baseIsKindOfClass(class, aClass);
+// }
+
++ (BOOL)isMemberOfClass:(Class)aClass {
+	return (self == aClass) ? YES : NO;
+}
+
+- (BOOL)isMemberOfClass:(Class)aClass {
+	return ([self class] == aClass) ? YES : NO;
+}
 
 #endif
 @end
