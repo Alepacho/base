@@ -100,7 +100,7 @@ void _mainBase(void) {
 // }
 
 + (BOOL)isMemberOfClass:(Class)aClass {
-	return [super isMemberOfClass:aClass];
+	return [[super class] isMemberOfClass:aClass];
 }
 
 - (BOOL)isMemberOfClass:(Class)aClass {
