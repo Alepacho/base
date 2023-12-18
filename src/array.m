@@ -252,7 +252,8 @@
 		return;
 	}
 
-	[self->data[index] release];
+	[self->data[index] dealloc];
+	self->data[index] = nil;
 
 	id* newData = malloc((self->size) * sizeof(id));
 	memcpy(newData, self->data, index * sizeof(id));
