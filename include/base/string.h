@@ -14,6 +14,7 @@
 - (void)dealloc;
 - (char*)buffer;
 - (id)appendBuffer:(const char*)buf;
+- (id)appendChar:(const char)ch;
 - (id)setBuffer:(const char*)buf;
 - (id)setString:(String*)str;
 - (size_t)length;

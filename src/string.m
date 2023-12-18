@@ -107,8 +107,13 @@ size_t string_cat(char* d, size_t n, char const* s) {
 	return self;
 }
 
-- (id)setBuffer:(const char*)buf {
+- (id)appendChar:(const char)ch {
+	const char str[2] = { ch, '\0' };
+	[self appendBuffer:str];
+	return self;
+}
 
+- (id)setBuffer:(const char*)buf {
 	[self initBuffer:buf];
 
 	return self;
@@ -121,7 +126,6 @@ size_t string_cat(char* d, size_t n, char const* s) {
 	}
 
 	[self initBuffer:[str buffer]];
-
 	return self;
 }
 
