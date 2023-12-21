@@ -16,6 +16,7 @@
 - (id)appendBuffer:(const char*)buf;
 - (id)appendChar:(const char)ch;
 - (id)setBuffer:(const char*)buf;
+- (id)setFormat:(const char*)fmt, ...;
 - (id)setString:(String*)str;
 - (size_t)length;
 - (BOOL)compareBuffer:(const char*)buf;

@@ -10,14 +10,7 @@
 #define vs_string_length _vscprintf
 #define vs_string_buffer vsprintf_s
 #else
-int vs_string_length(const char* format, va_list pargs) {
-	int retval;
-	va_list argcopy;
-	va_copy(argcopy, pargs);
-	retval = vsnprintf(NULL, 0, format, argcopy);
-	va_end(argcopy);
-	return retval;
-}
+extern int vs_string_length(const char* format, va_list pargs);
 #define vs_string_buffer vsnprintf
 #endif
 

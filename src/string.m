@@ -1,5 +1,6 @@
 #include "base/string.h"
 #include "base/system.h"
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,6 +15,21 @@ size_t string_copy(char* d, size_t n, char const* s) {
 size_t string_cat(char* d, size_t n, char const* s) {
 	return snprintf(d, n, "%s%s", d, s);
 }
+#endif
+
+#if OS_WINDOWS
+#define vs_string_length _vscprintf
+#define vs_string_buffer vsprintf_s
+#else
+int vs_string_length(const char* format, va_list pargs) {
+	int retval;
+	va_list argcopy;
+	va_copy(argcopy, pargs);
+	retval = vsnprintf(NULL, 0, format, argcopy);
+	va_end(argcopy);
+	return retval;
+}
+#define vs_string_buffer vsnprintf
 #endif
 
 @implementation String
@@ -70,8 +86,19 @@ size_t string_cat(char* d, size_t n, char const* s) {
 
 - (id)initWithFormat:(const char*)fmt, ... {
 	self = [self init];
-	self->buffer = nil;
-	[System fatal:"Method '%s' is unemplemented!", "initWithFormat"];
+
+	va_list args;
+	va_start(args, fmt);
+	const size_t length = vs_string_length(fmt, args) + 1;
+	char* buf = malloc(length * sizeof(char));
+	if (buf == nil) {
+		[System fatal:"Unable to allocate memory for formatted string!"];
+	}
+	vs_string_buffer(buf, length, fmt, args);
+	[self initBuffer:buf];
+	free(buf);
+	va_end(args);
+
 	return self;
 }
 
@@ -115,6 +142,22 @@ size_t string_cat(char* d, size_t n, char const* s) {
 
 - (id)setBuffer:(const char*)buf {
 	[self initBuffer:buf];
+
+	return self;
+}
+
+- (id)setFormat:(const char*)fmt, ... {
+	va_list args;
+	va_start(args, fmt);
+	const size_t length = vs_string_length(fmt, args) + 1;
+	char* buf = malloc(length * sizeof(char));
+	if (buf == nil) {
+		[System fatal:"Unable to allocate memory for formatted string!"];
+	}
+	vs_string_buffer(buf, length, fmt, args);
+	[self initBuffer:buf];
+	free(buf);
+	va_end(args);
 
 	return self;
 }
