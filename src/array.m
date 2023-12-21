@@ -82,6 +82,7 @@
 		[self pop];
 	}
 
+	self->size = self->used = 0;
 	if (self->data != nil) {
 		free(self->data);
 		self->data = nil;
