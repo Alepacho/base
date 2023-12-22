@@ -185,6 +185,24 @@
 // 	return nil;
 // }
 
+- (Size)getIndexByObject:(id)object {
+	@try {
+		if (object == nil)
+			@throw [[Exception alloc]
+				initWithFormat:"Unable to get method argument: %s!",
+							   "Object is nil"];
+	} @catch (Exception* ex) {
+		[System error:"%s\n", [ex message]];
+		[ex release];
+		return -1;
+	}
+	for (Size i = 0; i < [self count]; i++) {
+		if (self->data[i] == object) return i;
+	}
+
+	return -1;
+}
+
 - (id)getByIndex:(Size)index {
 	@try {
 		if (index >= self->used)

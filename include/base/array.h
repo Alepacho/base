@@ -43,6 +43,7 @@ typedef BOOL (*_BaseSortFn)(id a, id b);
 // - (T)getByObject:(T)object;
 
 //
+- (Size)getIndexByObject:(T)object;
 - (T)getByIndex:(Size)index;
 @end
 
