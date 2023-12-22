@@ -9,16 +9,16 @@ typedef BOOL (*_BaseSortFn)(id a, id b);
 // * subtypes are acceptable
 @interface Array<__covariant T> : BaseObject {
 	T* data;
-	size_t used;
-	size_t size;
+	Size used;
+	Size size;
 }
 
 - (id)init;
-- (id)initWithSize:(size_t)newSize;
+- (id)initWithSize:(Size)newSize;
 - (void)dealloc;
 
-- (size_t)count;
-- (size_t)size;
+- (Size)count;
+- (Size)size;
 
 - (void)clear;
 - (void)clear:(BOOL)withDealloc;
@@ -27,18 +27,23 @@ typedef BOOL (*_BaseSortFn)(id a, id b);
 - (void)pop;
 
 - (void)insert:(T)value;
-- (void)insert:(T)value byIndex:(size_t)index;
+- (void)insert:(T)value byIndex:(Size)index;
 
 - (void)remove;
-- (void)remove:(size_t)index;
+- (void)remove:(Size)index;
+- (void)remove:(Size)index withDealloc:(BOOL)flag;
 
-- (void)swap:(size_t)a to:(size_t)b;
+- (void)swap:(Size)a to:(Size)b;
 - (id)sort:(_BaseSortFn)func;
 
 - (T)getFirst;
 - (T)getLast;
-- (T)getByObject:(T)object;
-- (T)getByIndex:(size_t)index;
+
+// TODO: change it to 'getByClass:(Class)class'
+// - (T)getByObject:(T)object;
+
+//
+- (T)getByIndex:(Size)index;
 @end
 
 #endif // BASE_ARRAY_H

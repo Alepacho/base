@@ -11,7 +11,7 @@
 
 // @private
 
-- (void)resize:(size_t)newSize {
+- (void)resize:(Size)newSize {
 	self->size = newSize + 1;
 	self->data = realloc(self->data, self->size * sizeof(id));
 }
@@ -55,7 +55,7 @@
 	return self;
 }
 
-- (id)initWithSize:(size_t)newSize {
+- (id)initWithSize:(Size)newSize {
 	self = [self init];
 	[self resize:newSize];
 	return self;
@@ -69,16 +69,16 @@
 	[super dealloc];
 }
 
-- (size_t)count {
+- (Size)count {
 	return self->used;
 }
 
-- (size_t)size {
+- (Size)size {
 	return self->size;
 }
 
 - (void)clear {
-	for (size_t i = 0; i < [self count]; i++) {
+	for (Size i = 0; i < [self count]; i++) {
 		[self pop];
 	}
 
@@ -120,7 +120,7 @@
 - (void)pop {
 	if (self->used == 0) return;
 
-	size_t _at = --self->used;
+	Size _at = --self->used;
 	id _data = self->data[_at];
 
 	if (_data == nil)
@@ -166,25 +166,26 @@
 	return self->data[[self count] - 1];
 }
 
-- (id)getByObject:(id)object {
-	@try {
-		if (object == nil)
-			@throw [[Exception alloc]
-				initWithFormat:"Unable to get array element: %s!",
-							   "Object is nil"];
-	} @catch (Exception* ex) {
-		[System error:"%s\n", [ex message]];
-		[ex release];
-		return nil;
-	}
+// ! quite useless method
+// - (id)getByObject:(id)object {
+// 	@try {
+// 		if (object == nil)
+// 			@throw [[Exception alloc]
+// 				initWithFormat:"Unable to get array element: %s!",
+// 							   "Object is nil"];
+// 	} @catch (Exception* ex) {
+// 		[System error:"%s\n", [ex message]];
+// 		[ex release];
+// 		return nil;
+// 	}
 
-	for (size_t i = 0; i < [self count]; i++) {
-		if (self->data[i] == object) return self->data[i];
-	}
-	return nil;
-}
+// 	for (Size i = 0; i < [self count]; i++) {
+// 		if (self->data[i] == object) return self->data[i];
+// 	}
+// 	return nil;
+// }
 
-- (id)getByIndex:(size_t)index {
+- (id)getByIndex:(Size)index {
 	@try {
 		if (index >= self->used)
 			@throw [[Exception alloc]
@@ -204,7 +205,7 @@
 	[self insert:value byIndex:0];
 }
 
-- (void)insert:(id)value byIndex:(size_t)index {
+- (void)insert:(id)value byIndex:(Size)index {
 	@try {
 		if (index >= self->used)
 			@throw [[Exception alloc]
@@ -217,7 +218,7 @@
 		return;
 	}
 
-	size_t newSize = self->used + 1;
+	Size newSize = self->used + 1;
 	if (newSize >= self->size) newSize *= 2;
 
 	id* newData = malloc((newSize) * sizeof(id));
@@ -233,10 +234,14 @@
 }
 
 - (void)remove {
-	[self remove:0];
+	[self remove:0 withDealloc:YES];
 }
 
-- (void)remove:(size_t)index {
+- (void)remove:(Size)index {
+	[self remove:index withDealloc:YES];
+}
+
+- (void)remove:(Size)index withDealloc:(BOOL)flag {
 	@try {
 		if (index >= self->used)
 			@throw [[Exception alloc]
@@ -253,8 +258,10 @@
 		return;
 	}
 
-	[self->data[index] dealloc];
-	self->data[index] = nil;
+	if (flag) {
+		[self->data[index] dealloc];
+		self->data[index] = nil;
+	}
 
 	id* newData = malloc((self->size) * sizeof(id));
 	memcpy(newData, self->data, index * sizeof(id));
@@ -267,7 +274,7 @@
 	self->data = newData;
 }
 
-- (void)swap:(size_t)a to:(size_t)b {
+- (void)swap:(Size)a to:(Size)b {
 	// TODO: add bounds check
 	id t = self->data[a];
 	self->data[a] = self->data[b];
