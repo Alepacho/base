@@ -14,9 +14,12 @@
 - (void)dealloc;
 
 - (id)object;
-- (id)setObject:(id)newObject;
+- (id)setObject:(id)object;
+
 - (SEL)selector;
-- (id)setSelector:(SEL)newSelector;
+- (id)setSelector:(SEL)selector;
+
+- (id)setObject:(id)object setSelector:(SEL)selector;
 
 - (id)perform;
 - (id)perform:(SEL)selector;

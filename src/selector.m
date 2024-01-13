@@ -20,8 +20,8 @@
 	return obj;
 }
 
-- (id)setObject:(id)newObject {
-	obj = newObject;
+- (id)setObject:(id)object {
+	obj = object;
 	return self;
 }
 
@@ -29,8 +29,14 @@
 	return sel;
 }
 
-- (id)setSelector:(SEL)newSelector {
-	sel = newSelector;
+- (id)setSelector:(SEL)selector {
+	sel = selector;
+	return self;
+}
+
+- (id)setObject:(id)object setSelector:(SEL)selector {
+	obj = object;
+	sel = selector;
 	return self;
 }
 
