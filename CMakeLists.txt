@@ -32,6 +32,7 @@ set(SOURCES
     ${SRC_DIR}array.m
     ${SRC_DIR}string.m
     ${SRC_DIR}exception.m
+    ${SRC_DIR}selector.m
 )
 
 add_library(${LIBRARY_NAME} STATIC ${SOURCES})

@@ -53,9 +53,11 @@ __attribute__((objc_root_class))
 
 // - (id)copy;
 
-// TODO: should I keep it?
+// TODO: add selector methods
 // + (BOOL)respondsToSelector:(SEL)selector;
 // + (BOOL)instancesRespondToSelector:(SEL)selector;
+// - (BOOL)performSelector:(SEL)selector;
+// - (BOOL)performSelector:(SEL)selector withObject:(id)object;
 
 // + (BOOL)isKindOfClass:(Class)aClass;
 // - (BOOL)isKindOfClass:(Class)aClass;

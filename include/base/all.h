@@ -5,7 +5,9 @@
 #include "array.h"
 #include "base.h"
 #include "exception.h"
+#include "selector.h"
 #include "string.h"
 #include "system.h"
+
 
 #endif // BASE_ALL_H
