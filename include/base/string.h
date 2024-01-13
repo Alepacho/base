@@ -11,14 +11,21 @@
 - (id)initWithBuffer:(const char*)buf;
 - (id)initWithString:(String*)str;
 - (id)initWithFormat:(const char*)fmt, ...;
+
 - (void)dealloc;
+
+- (void)clear;
 - (char*)buffer;
+
 - (id)appendBuffer:(const char*)buf;
 - (id)appendChar:(const char)ch;
+
 - (id)setBuffer:(const char*)buf;
 - (id)setFormat:(const char*)fmt, ...;
 - (id)setString:(String*)str;
+
 - (size_t)length;
+
 - (BOOL)compareBuffer:(const char*)buf;
 @end
 

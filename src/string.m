@@ -61,7 +61,6 @@ int vs_string_length(const char* format, va_list pargs) {
 	self = [super init];
 
 	if (self) {
-		// [System trace:"new?"];
 		[self initBuffer:""];
 	}
 
@@ -100,6 +99,10 @@ int vs_string_length(const char* format, va_list pargs) {
 	va_end(args);
 
 	return self;
+}
+
+- (void)clear {
+	[self initBuffer:""];
 }
 
 - (char*)buffer {
