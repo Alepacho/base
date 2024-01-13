@@ -49,6 +49,15 @@
 }
 
 + (id)perform:(SEL)selector object:(id)object {
+#if OS_MACOS
+	const IMP msg = class_getMethodImplementation([object class], selector);
+
+	if (!msg)
+		@throw [[Exception alloc]
+			initWithFormat:"Invalid selector passed to %s", sel_getName(_cmd)];
+
+	return [object performSelector:selector];
+#else
 	const IMP msg = objc_msg_lookup(object, selector);
 
 	if (!msg)
@@ -56,6 +65,7 @@
 			initWithFormat:"Invalid selector passed to %s", sel_getName(_cmd)];
 
 	return (*msg)(object, selector);
+#endif // OS_MACOS
 }
 
 @end
