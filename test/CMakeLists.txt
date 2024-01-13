@@ -22,8 +22,10 @@ set(BASE_LIB_DIR ${BASE_DIR}/lib/)
 link_directories(${BASE_LIB_DIR})
 
 set(SOURCES
-    ${SRC_DIR}entity.m
     ${SRC_DIR}main.m
+    ${SRC_DIR}basic/test.m
+    ${SRC_DIR}basic/entity.m
+    ${SRC_DIR}selectors/test.m
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})
