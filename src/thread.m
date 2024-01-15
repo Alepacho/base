@@ -23,7 +23,7 @@
 #if OS_WINDOWS
 static DWORD WINAPI baseThreadFunction(LPVOID params)
 #else
-static int baseThreadFunction(void* params)
+static void* baseThreadFunction(void* params)
 #endif // OS_WINDOWS
 {
 	Thread* thread = (Thread*)params;
@@ -36,7 +36,7 @@ static int baseThreadFunction(void* params)
 - (id)init {
 	self = [super init];
 	if (self) {
-		tid = nil;
+		data = nil;
 		args = nil;
 		sel = nil;
 	}
@@ -61,52 +61,58 @@ static int baseThreadFunction(void* params)
 }
 
 - (void)create:(Selector*)selector args:(Array*)arguments {
-	if (tid)
+	if (data)
 		@throw [[Exception alloc] initWithFormat:"Failed to create thread. %s",
 												 "Thread already created."];
 	self->args = arguments;
 	self->sel = selector;
 
 #if OS_WINDOWS
-	tid = CreateThread(NULL, 0, baseThreadFunction, (LPVOID)self, 0, NULL);
+	data = CreateThread(NULL, 0, baseThreadFunction, (LPVOID)self, 0, NULL);
 #else
-	if (pthread_create(tid, NULL, baseThreadFunction, (void*)self) != 0)
-		tid = NULL;
+	// data = malloc(sizeof(pthread_t));
+	pthread_t p = nil;
+	if (pthread_create(&p, NULL, baseThreadFunction, (void*)self) != 0) {
+		// free(data);
+		p = nil;
+	}
+	data = p;
 #endif // OS_WINDOWS
 
-	if (tid == NULL)
+	if (data == nil)
 		@throw
 			[[Exception alloc] initWithFormat:"Failed to create thread. %i %s",
 											  "Thread ID is NULL."];
 }
 
 - (int)join {
-	if (tid == nil) return 0;
+	if (data == nil) return 0;
 
 #if OS_WINDOWS
-	if (WaitForSingleObject(tid, INFINITE) == WAIT_FAILED)
+	if (WaitForSingleObject(data, INFINITE) == WAIT_FAILED)
 		@throw [[Exception alloc]
 			initWithFormat:"Failed to join thread. %s",
 						   "Unable to wait until it's done."];
 
 	DWORD result;
-	BOOL code = GetExitCodeThread(tid, &result);
+	BOOL code = GetExitCodeThread(data, &result);
 	if (!code)
 		@throw
 			[[Exception alloc] initWithFormat:"Failed to join thread [%i]. %s",
 											  GetLastError(),
 											  "Can not close thread."];
 
-	CloseHandle(tid);
+	CloseHandle(data);
 #else
 	void* r;
-	if (pthread_join(tid, &r) != 0)
+	if (pthread_join(data, &r) != 0)
 		@throw [[Exception alloc] initWithFormat:"Failed to join thread. %s",
 												 "Can not close thread."];
 	int result = (intptr_t)r;
+	// free(data);
 #endif // OS_WINDOWS
 
-	tid = nil;
+	data = nil;
 	[sel dealloc];
 	sel = nil;
 	[args dealloc];
@@ -118,9 +124,9 @@ static int baseThreadFunction(void* params)
 - (BOOL)detach {
 	BOOL result = NO;
 #if OS_WINDOWS
-	result = CloseHandle(tid) != 0;
+	result = CloseHandle(data) != 0;
 #else
-	result = pthread_detach(tid) == 0;
+	result = pthread_detach(data) == 0;
 #endif // OS_WINDOWS
 	return result;
 }

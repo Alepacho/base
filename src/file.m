@@ -6,14 +6,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#ifdef OS_WINDOWS
+#if OS_WINDOWS
 #include <io.h>
 #define F_OK			 0
 #define base_file_access _access
 #else
 #include <unistd.h>
 #define base_file_access access
-
+errno_t fopen_s(FILE** f, const char* name, const char* mode) {
+	errno_t ret = 0;
+	assert(f);
+	*f = fopen(name, mode);
+	if (!*f) ret = errno;
+	return ret;
+}
 #endif
 
 BOOL base_file_open(FILE** stream, const char* buf, const char* mode) {
@@ -60,6 +66,8 @@ BOOL base_file_open(FILE** stream, const char* buf, const char* mode) {
 	[self getFOpenMode:m];
 
 	if (!base_file_open((FILE**)&file, [path buffer], [m buffer])) {
+		fclose(file);
+		file = nil;
 		@throw [[Exception alloc]
 			initWithFormat:"Failed to open '%s' file with '%s' mode: %s",
 						   [path buffer],

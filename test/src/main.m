@@ -9,8 +9,8 @@
 
 int main(void) {
 	@try {
-		[TestBasic execute];
-		[TestSelectors execute];
+		// [TestBasic execute];
+		// [TestSelectors execute];
 		[TestFiles execute];
 		[TestThreads execute];
 

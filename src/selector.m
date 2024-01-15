@@ -67,7 +67,11 @@
 	if (!msg)
 		@throw [[Exception alloc]
 			initWithFormat:"Invalid selector passed to %s", sel_getName(_cmd)];
+#if OS_MACOS
+	return [object performSelector:selector];
+#else
 	return (*msg)(object, selector);
+#endif // OS_MACOS
 }
 
 + (id)perform:(SEL)selector object:(id)object args:(Array*)args {
@@ -77,7 +81,11 @@
 		@throw [[Exception alloc]
 			initWithFormat:"Invalid selector passed to %s", sel_getName(_cmd)];
 
+#if OS_MACOS
+	return [object performSelector:selector withObject:args];
+#else
 	return (*msg)(object, selector, args);
+#endif // OS_MACOS
 }
 
 - (id)performWithArgs:(Array*)args {

@@ -9,13 +9,13 @@
 
 #define BaseAtomic _Atomic
 
-typedef struct base_thread base_thread;
+// typedef struct base_thread base_thread;
 
 @class Selector;
 @class Array;
 
 @interface Thread : BaseObject {
-	base_thread* tid;
+	void* data;
 	Array* args;
 	Selector* sel;
 }
@@ -25,7 +25,7 @@ typedef struct base_thread base_thread;
 
 - (Array*)args;
 - (Selector*)selector;
-// - (base_thread*)thread;
+// - (void*)data;
 
 - (void)create:(Selector*)selector;
 - (void)create:(Selector*)selector args:(Array*)arguments;
