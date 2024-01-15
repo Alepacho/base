@@ -34,6 +34,7 @@ set(SOURCES
     ${SRC_DIR}exception.m
     ${SRC_DIR}selector.m
     ${SRC_DIR}file.m
+    ${SRC_DIR}thread.m
 )
 
 add_library(${LIBRARY_NAME} STATIC ${SOURCES})

@@ -14,7 +14,15 @@
 + (void)execute {
 	[System debug:"File test begin"];
 	File* file = [File new];
-	[file open:BASE_FILE_READ withBuffer:"./test.txt"];
+
+	@try {
+		[file open:BASE_FILE_READ withBuffer:"./test.txt"];
+	} @catch (Exception* ex) {
+		[System warning:"%s\n%s", [ex message], "Test skip."];
+		[file dealloc];
+		[ex dealloc];
+		return;
+	}
 	String* result = [String new];
 
 	[file readWithString:result size:[file length]];

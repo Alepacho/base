@@ -27,6 +27,7 @@ set(SOURCES
     ${SRC_DIR}basic/entity.m
     ${SRC_DIR}selectors/test.m
     ${SRC_DIR}files/test.m
+    ${SRC_DIR}threads/test.m
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})
