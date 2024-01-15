@@ -8,6 +8,7 @@
 	if (self) {
 		sel = nil;
 		obj = nil;
+		res = nil;
 	}
 	return self;
 }
@@ -40,32 +41,47 @@
 	return self;
 }
 
+- (IMP)method {
+	return [Selector method:sel object:obj];
+}
+
++ (IMP)method:(SEL)selector object:(id)object {
+	return class_getMethodImplementation([object class], selector);
+}
+
+- (id)result {
+	return res;
+}
+
 - (id)perform {
-	return [Selector perform:sel object:obj];
+	return res = [Selector perform:sel object:obj];
 }
 
 - (id)perform:(SEL)selector {
-	return [Selector perform:selector object:obj];
+	return res = [Selector perform:selector object:obj];
 }
 
 + (id)perform:(SEL)selector object:(id)object {
-#if OS_MACOS
-	const IMP msg = class_getMethodImplementation([object class], selector);
+	const IMP msg = [self method:selector object:object];
 
 	if (!msg)
 		@throw [[Exception alloc]
 			initWithFormat:"Invalid selector passed to %s", sel_getName(_cmd)];
-
-	return [object performSelector:selector];
-#else
-	const IMP msg = objc_msg_lookup(object, selector);
-
-	if (!msg)
-		@throw [[Exception alloc]
-			initWithFormat:"Invalid selector passed to %s", sel_getName(_cmd)];
-
 	return (*msg)(object, selector);
-#endif // OS_MACOS
+}
+
++ (id)perform:(SEL)selector object:(id)object args:(Array*)args {
+	const IMP msg = [self method:selector object:object];
+
+	if (!msg)
+		@throw [[Exception alloc]
+			initWithFormat:"Invalid selector passed to %s", sel_getName(_cmd)];
+
+	return (*msg)(object, selector, args);
+}
+
+- (id)performWithArgs:(Array*)args {
+	return res = [Selector perform:sel object:obj args:args];
 }
 
 @end

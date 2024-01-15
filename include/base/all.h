@@ -9,5 +9,6 @@
 #include "selector.h"
 #include "string.h"
 #include "system.h"
+#include "thread.h"
 
 #endif // BASE_ALL_H
