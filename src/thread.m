@@ -1,4 +1,4 @@
-// COPYRIGHT NOTE: I'm using some parts of tinycthread library.
+// COPYRIGHT NOTE: I'm using some parts of the tinycthread library.
 // https://github.com/tinycthread/tinycthread
 
 // TODO: implement TSS?
@@ -70,7 +70,7 @@ static int baseThreadFunction(void* params)
 #if OS_WINDOWS
 	tid = CreateThread(NULL, 0, baseThreadFunction, (LPVOID)self, 0, NULL);
 #else
-	if (pthread_create(thr, NULL, baseThreadFunction, (void*)self) != 0)
+	if (pthread_create(tid, NULL, baseThreadFunction, (void*)self) != 0)
 		tid = NULL;
 #endif // OS_WINDOWS
 
@@ -100,7 +100,7 @@ static int baseThreadFunction(void* params)
 	CloseHandle(tid);
 #else
 	void* r;
-	if (pthread_join(thr, &r) != 0)
+	if (pthread_join(tid, &r) != 0)
 		@throw [[Exception alloc] initWithFormat:"Failed to join thread. %s",
 												 "Can not close thread."];
 	int result = (intptr_t)r;
@@ -129,7 +129,7 @@ static int baseThreadFunction(void* params)
 #if OS_WINDOWS
 	ExitThread((DWORD)result);
 #else
-	pthread_exit((void*)(intptr_t)res);
+	pthread_exit((void*)(intptr_t)result);
 #endif // OS_WINDOWS
 }
 
