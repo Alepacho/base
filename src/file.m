@@ -157,25 +157,35 @@ BOOL base_file_open(FILE** stream, const char* buf, const char* mode) {
 	fseek(file, 0, SEEK_END);
 }
 
+- (char*)readWithBuffer:(char*)buf {
+	return [self readWithBuffer:buf size:length];
+}
+
 - (char*)readWithBuffer:(char*)buf size:(int)size {
 	[self checkFile];
-	char* res = fgets(buf, size, file);
-	if (res == NULL) {
-		@throw [[Exception alloc]
-			initWithFormat:"Unable to read file '%s'.", [path buffer]];
+	unsigned long long l = fread(buf, sizeof(char), size, file);
+	[System debug:"l %i len %i", l, length];
+	if (feof(file) && (l < length)) {
+		buf = realloc(buf, l + 1);
+		size = l;
 	}
-	return res;
+	if (!(mode & BASE_FILE_BINARY)) buf[size] = '\0';
+	if (buf == NULL) {
+		@throw [[Exception alloc] initWithFormat:"Unable to read file '%s'. %s",
+												 [path buffer],
+												 "Buffer is not defined!"];
+	}
+	return buf;
+}
+
+- (void)readWithString:(String*)str {
+	return [self readWithString:str size:length];
 }
 
 - (void)readWithString:(String*)str size:(int)size {
 	[self checkFile];
-	char* buf = malloc(size + 1);
-	if (fgets(buf, size + 1, file) == NULL) {
-		free(buf);
-		@throw [[Exception alloc]
-			initWithFormat:"Unable to read file '%s'.", [path buffer]];
-	}
-	[str appendBuffer:buf];
+	char* buf = [self readWithBuffer:malloc(size * sizeof(char) + 1) size:size];
+	[str setBuffer:buf];
 	free(buf);
 }
 

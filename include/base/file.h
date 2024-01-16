@@ -42,7 +42,9 @@ typedef enum {
 - (void)seekStart;
 - (void)seekEnd;
 
+- (char*)readWithBuffer:(char*)buf;
 - (char*)readWithBuffer:(char*)buf size:(int)size;
+- (void)readWithString:(String*)str;
 - (void)readWithString:(String*)str size:(int)size;
 
 - (int)writeBuffer:(char*)buf;

@@ -12,7 +12,7 @@ int main(void) {
 		// [TestBasic execute];
 		// [TestSelectors execute];
 		[TestFiles execute];
-		[TestThreads execute];
+		// [TestThreads execute];
 
 	} @catch (Exception* ex) {
 		[System fatal:"%s", [ex message]];

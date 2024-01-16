@@ -31,9 +31,9 @@
 	}
 	String* result = [String new];
 
-	[file readWithString:result size:[file length]];
+	[file readWithString:result];
 
-	[System debug:"result: %s", [result buffer]];
+	[System debug:"result: '%s'", [result buffer]];
 
 	[result dealloc];
 	[file dealloc];
