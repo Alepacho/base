@@ -137,6 +137,22 @@ int vs_string_length(const char* format, va_list pargs) {
 	return self;
 }
 
+- (id)appendFormat:(const char*)fmt, ... {
+	va_list args;
+	va_start(args, fmt);
+	const size_t length = vs_string_length(fmt, args) + 1;
+	char* buf = malloc(length * sizeof(char));
+	if (buf == nil) {
+		[System fatal:"Unable to allocate memory for formatted string!"];
+	}
+	vs_string_buffer(buf, length, fmt, args);
+	[self appendBuffer:buf];
+	free(buf);
+	va_end(args);
+
+	return self;
+}
+
 - (id)appendChar:(const char)ch {
 	const char str[2] = { ch, '\0' };
 	[self appendBuffer:str];

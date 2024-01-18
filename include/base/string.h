@@ -18,6 +18,7 @@
 - (char*)buffer;
 
 - (id)appendBuffer:(const char*)buf;
+- (id)appendFormat:(const char*)fmt, ...;
 - (id)appendChar:(const char)ch;
 
 - (id)setBuffer:(const char*)buf;
