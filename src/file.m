@@ -23,8 +23,8 @@ errno_t fopen_s(FILE** f, const char* name, const char* mode) {
 #endif
 
 BOOL base_file_open(FILE** stream, const char* buf, const char* mode) {
-	[System debug:"buf: %s", buf];
-	[System debug:"mode: %s", mode];
+	// [System debug:"buf: %s", buf];
+	// [System debug:"mode: %s", mode];
 	errno_t err = fopen_s(stream, buf, mode);
 	return !err;
 }
@@ -164,7 +164,7 @@ BOOL base_file_open(FILE** stream, const char* buf, const char* mode) {
 - (char*)readWithBuffer:(char*)buf size:(int)size {
 	[self checkFile];
 	unsigned long long l = fread(buf, sizeof(char), size, file);
-	[System debug:"l %i len %i", l, length];
+	// [System debug:"l %i len %i", l, length];
 	if (feof(file) && (l < length)) {
 		buf = realloc(buf, l + 1);
 		size = l;
