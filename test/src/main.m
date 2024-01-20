@@ -10,8 +10,8 @@
 int main(void) {
 	@try {
 		// [TestBasic execute];
-		// [TestSelectors execute];
-		[TestFiles execute];
+		[TestSelectors execute];
+		// [TestFiles execute];
 		// [TestThreads execute];
 
 	} @catch (Exception* ex) {

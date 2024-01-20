@@ -3,14 +3,14 @@
 #ifndef BASE_SELECTOR_H
 #define BASE_SELECTOR_H
 
+#include "array.h"
 #include "base.h"
 
-@class Array;
-
-@interface Selector : BaseObject {
+@interface Selector<__covariant T> : BaseObject {
 	id obj;
 	SEL sel;
 	id res;
+	Array<T>* args;
 }
 
 - (id)init;
@@ -22,7 +22,13 @@
 - (SEL)selector;
 - (id)setSelector:(SEL)selector;
 
+- (Array<T>*)arguments;
+- (id)setArguments:(Array<T>*)arguments;
+
 - (id)setObject:(id)object setSelector:(SEL)selector;
+- (id)setObject:(id)object
+	 setSelector:(SEL)selector
+	setArguments:(Array<T>*)arguments;
 
 - (IMP)method;
 + (IMP)method:(SEL)selector object:(id)object;
@@ -31,10 +37,10 @@
 
 - (id)perform;
 - (id)perform:(SEL)selector;
-+ (id)perform:(SEL)selector object:(id)object;
-+ (id)perform:(SEL)selector object:(id)object args:(Array*)args;
+- (id)performWithArgs:(Array*)arguments;
 
-- (id)performWithArgs:(Array*)args;
++ (id)perform:(SEL)selector object:(id)object;
++ (id)perform:(SEL)selector object:(id)object arguments:(Array*)arguments;
 
 @end
 
