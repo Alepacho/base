@@ -10,7 +10,7 @@
 	id obj;
 	SEL sel;
 	id res;
-	Array<T>* args;
+	T arg;
 }
 
 - (id)init;
@@ -22,13 +22,11 @@
 - (SEL)selector;
 - (id)setSelector:(SEL)selector;
 
-- (Array<T>*)arguments;
-- (id)setArguments:(Array<T>*)arguments;
+- (T)argument;
+- (id)setArgument:(T)argument;
 
 - (id)setObject:(id)object setSelector:(SEL)selector;
-- (id)setObject:(id)object
-	 setSelector:(SEL)selector
-	setArguments:(Array<T>*)arguments;
+- (id)setObject:(id)object setSelector:(SEL)selector setArgument:(T)argument;
 
 - (IMP)method;
 + (IMP)method:(SEL)selector object:(id)object;
@@ -40,7 +38,7 @@
 - (id)performWithArgs:(Array*)arguments;
 
 + (id)perform:(SEL)selector object:(id)object;
-+ (id)perform:(SEL)selector object:(id)object arguments:(Array*)arguments;
++ (id)perform:(SEL)selector object:(id)object argument:(T)argument;
 
 @end
 

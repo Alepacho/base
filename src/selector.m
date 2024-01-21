@@ -9,7 +9,7 @@
 		sel = nil;
 		obj = nil;
 		res = nil;
-		args = nil;
+		arg = nil;
 	}
 	return self;
 }
@@ -36,12 +36,12 @@
 	return self;
 }
 
-- (Array*)arguments {
-	return args;
+- (id)argument {
+	return arg;
 }
 
-- (id)setArguments:(Array*)arguments {
-	args = arguments;
+- (id)setArgument:(id)argument {
+	arg = argument;
 	return self;
 }
 
@@ -51,12 +51,10 @@
 	return self;
 }
 
-- (id)setObject:(id)object
-	 setSelector:(SEL)selector
-	setArguments:(Array*)arguments {
+- (id)setObject:(id)object setSelector:(SEL)selector setArgument:(id)argument {
 	obj = object;
 	sel = selector;
-	args = arguments;
+	arg = argument;
 	return self;
 }
 
@@ -73,11 +71,11 @@
 }
 
 - (id)perform {
-	return res = [Selector perform:sel object:obj arguments:args];
+	return res = [Selector perform:sel object:obj argument:arg];
 }
 
 - (id)perform:(SEL)selector {
-	return res = [Selector perform:selector object:obj arguments:args];
+	return res = [Selector perform:selector object:obj argument:arg];
 }
 
 + (id)perform:(SEL)selector object:(id)object {
@@ -93,7 +91,7 @@
 #endif // OS_MACOS
 }
 
-+ (id)perform:(SEL)selector object:(id)object arguments:(Array*)arguments {
++ (id)perform:(SEL)selector object:(id)object argument:(id)argument {
 	const IMP msg = [self method:selector object:object];
 
 	if (!msg)
@@ -101,14 +99,14 @@
 			initWithFormat:"Invalid selector passed to %s", sel_getName(_cmd)];
 
 #if OS_MACOS
-	return [object performSelector:selector withObject:arguments];
+	return [object performSelector:selector withObject:argument];
 #else
-	return (*msg)(object, selector, arguments);
+	return (*msg)(object, selector, argument);
 #endif // OS_MACOS
 }
 
 - (id)performWithArgs:(Array*)arguments {
-	return res = [Selector perform:sel object:obj arguments:arguments];
+	return res = [Selector perform:sel object:obj argument:arguments];
 }
 
 @end
