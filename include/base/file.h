@@ -48,27 +48,27 @@ typedef enum {
 // Returns NO if pending data could not be written. The file is closed anyway.
 - (BOOL)close;
 // Current size of the file in bytes.
-- (Size)length;
-- (Size)position;
+- (BaseSize)length;
+- (BaseSize)position;
 
-- (void)seek:(Size)pos;
+- (void)seek:(BaseSize)pos;
 - (void)seekStart;
 - (void)seekEnd;
 
 // Reads up to `size` bytes and returns how many were read (0 at the end of
 // the file). In text mode `buf` must hold `size + 1` bytes and is always
 // NUL-terminated; in binary mode nothing is appended.
-- (Size)readWithBuffer:(char*)buf size:(Size)size;
+- (BaseSize)readWithBuffer:(char*)buf size:(BaseSize)size;
 // Replaces the contents of `str` with everything from the current position
 // up to the end of the file. Binary data, NUL bytes included, is kept as is.
 // If reading fails, `str` holds what was read before the error.
 - (void)readWithString:(String*)str;
 // Same, but reads up to `size` bytes.
-- (void)readWithString:(String*)str size:(Size)size;
+- (void)readWithString:(String*)str size:(BaseSize)size;
 
-- (Size)write:(const void*)data size:(Size)size;
-- (Size)writeBuffer:(const char*)buf;
-- (Size)writeString:(String*)str;
+- (BaseSize)write:(const void*)data size:(BaseSize)size;
+- (BaseSize)writeBuffer:(const char*)buf;
+- (BaseSize)writeString:(String*)str;
 
 @end
 

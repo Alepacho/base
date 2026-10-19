@@ -4,6 +4,7 @@
 
 #include "array.h"
 #include "base.h"
+#include "dictionary.h"
 #include "exception.h"
 #include "file.h"
 #include "selector.h"

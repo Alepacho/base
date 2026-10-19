@@ -41,8 +41,8 @@ static void testPlatform(void) {
 	CHECK(OS_LINUX);
 #endif
 
-	CHECK(sizeof(Size) == 8);
-	CHECK(BASE_NOT_FOUND == (Size)-1);
+	CHECK(sizeof(BaseSize) == 8);
+	CHECK(BASE_NOT_FOUND == (BaseSize)-1);
 }
 
 static void testClasses(void) {
@@ -118,9 +118,140 @@ static void testNumber(void) {
 	CHECK([n value] == 42);
 	[n release];
 
-	n = [[Number alloc] initValue:(Size)-1];
+	n = [[Number alloc] initValue:(BaseSize)-1];
 	CHECK([n value] == 18446744073709551615ULL);
+	CHECK([n kind] == BASE_NUMBER_UNSIGNED);
+	CHECK([n integer] == -1); // wraps around
 	[n release];
+
+	// signed
+	n = [[Number alloc] initWithInteger:-5];
+	CHECK([n kind] == BASE_NUMBER_SIGNED);
+	CHECK([n integer] == -5);
+	CHECK([n value] == (BaseSize)-5);
+	CHECK([n real] == -5.0);
+	[n release];
+
+	// real: truncated towards zero and clamped, NaN is 0
+	n = [[Number alloc] initWithReal:2.75];
+	CHECK([n kind] == BASE_NUMBER_REAL);
+	CHECK([n real] == 2.75);
+	CHECK([n integer] == 2);
+	CHECK([n value] == 2);
+	[n setReal:-2.75];
+	CHECK([n integer] == -2);
+	CHECK([n value] == 0);
+	[n setReal:1e300];
+	CHECK([n integer] == LLONG_MAX);
+	CHECK([n value] == SIZE_MAX);
+	[n setReal:-1e300];
+	CHECK([n integer] == LLONG_MIN);
+	[n setReal:0.0 / 0.0];
+	CHECK([n integer] == 0 && [n value] == 0);
+
+	// setters change the kind
+	CHECK([n setInteger:7] == n);
+	CHECK([n kind] == BASE_NUMBER_SIGNED);
+	CHECK([n set:8] == n);
+	CHECK([n kind] == BASE_NUMBER_UNSIGNED);
+	[n release];
+}
+
+static void testNumberObject(void) {
+	Number* a = [[Number alloc] initWithInteger:3];
+	Number* b = [[Number alloc] initWithInteger:3];
+	Number* u = [[Number alloc] initValue:3];
+	CHECK([a isEqual:b] && [a hash] == [b hash]);
+	CHECK(![a isEqual:u]); // another kind
+	CHECK(![a isEqual:nil]);
+	String* s = [[String alloc] initWithBuffer:"3"];
+	CHECK(![a isEqual:s]);
+	[s release];
+
+	Number* zero = [[Number alloc] initWithReal:0.0];
+	Number* negativeZero = [[Number alloc] initWithReal:-0.0];
+	CHECK([zero isEqual:negativeZero]);
+	CHECK([zero hash] == [negativeZero hash]);
+
+	Number* copy = [a copy];
+	CHECK(copy != a && [copy isEqual:a]);
+	[copy setInteger:4];
+	CHECK([a integer] == 3);
+	[copy release];
+
+	String* d = [a copyDescription];
+	CHECK([d compareBuffer:"3"]);
+	[d release];
+	d = [negativeZero copyDescription];
+	CHECK([d compareBuffer:"-0"]);
+	[d release];
+	[u set:18446744073709551615ULL];
+	d = [u copyDescription];
+	CHECK([d compareBuffer:"18446744073709551615"]);
+	[d release];
+
+	[negativeZero release];
+	[zero release];
+	[u release];
+	[b release];
+	[a release];
+}
+
+@interface Plain : BaseObject
+- (void)method;
++ (void)classMethod;
+@end
+@implementation Plain
+- (void)method {
+}
++ (void)classMethod {
+}
+@end
+
+static void testIntrospection(void) {
+	Bird* bird = [Bird new];
+
+	CHECK([bird isKindOfClass:[Bird class]]);
+	CHECK([bird isKindOfClass:[Animal class]]);
+	CHECK([bird isKindOfClass:[BaseObject class]]);
+	CHECK(![bird isKindOfClass:[Number class]]);
+	CHECK([Bird isSubclassOfClass:[Animal class]]);
+	CHECK([Bird isSubclassOfClass:[Bird class]]);
+	CHECK(![Animal isSubclassOfClass:[Bird class]]);
+
+	CHECK([bird respondsToSelector:@selector(legs)]);
+	CHECK(![bird respondsToSelector:@selector(value)]);
+	CHECK(![bird respondsToSelector:NULL]);
+	CHECK([Bird instancesRespondToSelector:@selector(legs)]);
+	CHECK(![Bird instancesRespondToSelector:@selector(classMethod)]);
+	CHECK(![Bird instancesRespondToSelector:NULL]);
+	// sent to a class: class methods
+	CHECK([Plain respondsToSelector:@selector(classMethod)]);
+	CHECK(![Plain respondsToSelector:@selector(method)]);
+
+	[bird release];
+}
+
+static void testObjectDefaults(void) {
+	Plain* a = [Plain new];
+	Plain* b = [Plain new];
+
+	// identity
+	CHECK([a isEqual:a]);
+	CHECK(![a isEqual:b]);
+	CHECK(![a isEqual:nil]);
+	CHECK([a hash] == [a hash]);
+
+	CHECK_THROWS_MESSAGE([a copy], "can not be copied");
+
+	String* d = [a copyDescription];
+	char expected[64];
+	snprintf(expected, sizeof(expected), "<Plain: %p>", (void*)a);
+	CHECK([d compareBuffer:expected]);
+	[d release];
+
+	[b release];
+	[a release];
 }
 
 void testBaseObject(void) {
@@ -128,4 +259,7 @@ void testBaseObject(void) {
 	testClasses();
 	testReferenceCounting();
 	testNumber();
+	testNumberObject();
+	testIntrospection();
+	testObjectDefaults();
 }

@@ -26,7 +26,10 @@
 
 - (void)dealloc;
 
+// Empties the string. A big buffer is given back to the system.
 - (void)clear;
+// Gives back the memory that the current contents do not need.
+- (id)shrink;
 // The bytes may be changed in place, but not the length: use the methods
 // below for that.
 - (char*)buffer;
@@ -50,6 +53,12 @@
 
 // Full equality check with a C string, `nil` is never equal.
 - (BOOL)compareBuffer:(const char*)buf;
+
+// Strings are equal when they hold the same bytes.
+- (BOOL)isEqual:(id)object;
+- (BaseSize)hash;
+- (id)copy;
+- (String*)copyDescription;
 @end
 
 #endif // BASE_STRING_H

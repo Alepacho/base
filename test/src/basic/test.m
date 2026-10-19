@@ -126,15 +126,15 @@ BOOL array_sort(id a, id b) {
 
 	Array<Entity*>* arr = [[Array alloc] init];
 	// Array<Entity*>* arr = [Array alloc];
-	[System debug:"count: %llu", [arr count]];
+	[System debug:"count: %zu", [arr count]];
 
 	[arr push:[[Entity alloc] initX:4 initY:2]];
 	[arr push:[[Entity alloc] initX:2 initY:4]];
-	[System debug:"count: %llu", [arr count]];
+	[System debug:"count: %zu", [arr count]];
 
 	if (NO) {
 		[arr pop];
-		[System debug:"count: %llu", [arr count]];
+		[System debug:"count: %zu", [arr count]];
 	}
 
 	if (NO) {
@@ -168,7 +168,7 @@ BOOL array_sort(id a, id b) {
 			[System debug:"Entity[%zu]: { .x = %f, .y = %f }", i, [e x], [e y]];
 		}
 
-		[System println:"Real size of array is: %llu", [arr size]];
+		[System println:"Real size of array is: %zu", [arr size]];
 
 		[System println:"----------------------"];
 		[arr remove];
@@ -179,7 +179,7 @@ BOOL array_sort(id a, id b) {
 			[System debug:"Entity[%zu]: { .x = %f, .y = %f }", i, [e x], [e y]];
 		}
 
-		[System println:"Real size of array is: %llu", [arr size]];
+		[System println:"Real size of array is: %zu", [arr size]];
 	}
 
 	// retain/release test
@@ -208,9 +208,9 @@ BOOL array_sort(id a, id b) {
 
 		[arrn swap:1 to:2];
 
-		for (Size i = 0; i < [arrn count]; i++) {
+		for (BaseSize i = 0; i < [arrn count]; i++) {
 			Number* n = [arrn getByIndex:i];
-			[System debug:"Number[%llu]: %llu ", i, [n value]];
+			[System debug:"Number[%zu]: %zu ", i, [n value]];
 		}
 
 		[arrn release];
@@ -231,9 +231,9 @@ BOOL array_sort(id a, id b) {
 
 		[arrn sort:array_sort];
 
-		for (Size i = 0; i < [arrn count]; i++) {
+		for (BaseSize i = 0; i < [arrn count]; i++) {
 			Number* n = [arrn getByIndex:i];
-			[System debug:"Number[%llu]: %llu ", i, [n value]];
+			[System debug:"Number[%zu]: %zu ", i, [n value]];
 		}
 
 		[arrn release];

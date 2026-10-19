@@ -74,6 +74,16 @@ static char* baseVFormat(const char* fmt, va_list args, size_t* outLength) {
 	self->buffer[self->length] = '\0';
 }
 
+// Reallocates the buffer to exactly `newCapacity` bytes (at least
+// `length + 1`). Keeps the old one if the system can not do it.
+- (void)fit:(size_t)newCapacity {
+	if (newCapacity >= self->capacity) return;
+	char* newBuffer = realloc(self->buffer, newCapacity);
+	if (newBuffer == NULL) return;
+	self->buffer = newBuffer;
+	self->capacity = newCapacity;
+}
+
 // Takes over `buf`, a heap buffer of `len + 1` bytes ending with a NUL.
 - (void)adopt:(char*)buf length:(size_t)len {
 	free(self->buffer);
@@ -153,6 +163,13 @@ static char* baseVFormat(const char* fmt, va_list args, size_t* outLength) {
 - (void)clear {
 	self->length = 0;
 	self->buffer[0] = '\0';
+	// Small buffers are kept: clearing and refilling a string is common.
+	if (self->capacity > 4096) [self fit:16];
+}
+
+- (id)shrink {
+	[self fit:self->length + 1];
+	return self;
 }
 
 - (char*)buffer {
@@ -245,6 +262,35 @@ static char* baseVFormat(const char* fmt, va_list args, size_t* outLength) {
 			&& memcmp(self->buffer, buf, self->length) == 0)
 			   ? YES
 			   : NO;
+}
+
+- (BOOL)isEqual:(id)object {
+	if (self == object) return YES;
+	if (object == nil || ![object isKindOfClass:[String class]]) return NO;
+
+	String* other = object;
+	return ([other length] == self->length
+			&& memcmp(self->buffer, [other buffer], self->length) == 0)
+			   ? YES
+			   : NO;
+}
+
+- (BaseSize)hash {
+	// FNV-1a
+	BaseSize h = 14695981039346656037ULL;
+	for (size_t i = 0; i < self->length; i++) {
+		h ^= (unsigned char)self->buffer[i];
+		h *= 1099511628211ULL;
+	}
+	return h;
+}
+
+- (id)copy {
+	return [[[self class] alloc] initWithString:self];
+}
+
+- (String*)copyDescription {
+	return [[String alloc] initWithString:self];
 }
 
 @end

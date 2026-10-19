@@ -50,7 +50,8 @@
 - (BOOL)detach;
 
 // These act on the *calling* thread.
-// Note: a detached thread that calls `exit:` leaks its selector and arguments.
+// `exit:` ends it right away; the selector and the arguments are still
+// released, and `join` returns `code`.
 + (void)exit:(int)code __attribute__((noreturn));
 + (void)yield;
 
@@ -81,6 +82,34 @@
 // (or the calling thread does, for a plain mutex).
 - (BOOL)tryLock;
 - (void)unlock;
+
+@end
+
+// Condition variable: lets threads wait, with a Mutex, until another thread
+// signals that something has changed.
+//
+//   [mutex lock];
+//   while (!ready) [condition wait:mutex];
+//   [mutex unlock];
+//
+// Waits may wake up without a signal (spuriously), so always wait in a loop
+// that checks what you are waiting for.
+@interface Condition : BaseObject {
+	void* handle;
+}
+
+- (id)init;
+- (void)dealloc;
+
+// Unlocks `mutex`, which the calling thread must have locked (once, for a
+// recursive mutex), waits for a signal and locks it again.
+- (void)wait:(Mutex*)mutex;
+// Same, but waits for `seconds` at most. Returns NO when the time is up.
+- (BOOL)wait:(Mutex*)mutex timeout:(double)seconds;
+
+// Wakes up one waiting thread, or every one of them.
+- (void)signal;
+- (void)broadcast;
 
 @end
 

@@ -20,15 +20,15 @@ static BOOL greaterByTens(id a, id b) {
 }
 
 // Checks that `a` holds exactly `count` values from `values`.
-static BOOL holds(Array<Number*>* a, const Size* values, Size count) {
+static BOOL holds(Array<Number*>* a, const BaseSize* values, BaseSize count) {
 	if ([a count] != count) return NO;
-	for (Size i = 0; i < count; i++)
+	for (BaseSize i = 0; i < count; i++)
 		if ([[a getByIndex:i] value] != values[i]) return NO;
 	return YES;
 }
 
 static BOOL isSorted(Array<Number*>* a) {
-	for (Size i = 1; i < [a count]; i++)
+	for (BaseSize i = 1; i < [a count]; i++)
 		if ([[a getByIndex:i - 1] value] > [[a getByIndex:i] value]) return NO;
 	return YES;
 }
@@ -42,7 +42,7 @@ static void testCapacity(void) {
 	a = [[Array alloc] initWithSize:16];
 	CHECK([a count] == 0);
 	CHECK([a size] == 16);
-	for (Size i = 0; i < 16; i++)
+	for (BaseSize i = 0; i < 16; i++)
 		[a push:probe(i)];
 	CHECK([a size] == 16); // no reallocation while it fits
 	[a push:probe(16)];
@@ -56,7 +56,7 @@ static void testCapacity(void) {
 	[a release];
 
 	// sizes whose byte count does not fit in memory, even after wrapping
-	CHECK_THROWS_MESSAGE([[Array alloc] initWithSize:(Size)1 << 61],
+	CHECK_THROWS_MESSAGE([[Array alloc] initWithSize:(BaseSize)1 << 61],
 						 "Out of memory");
 	CHECK_THROWS_MESSAGE([[Array alloc] initWithSize:BASE_NOT_FOUND],
 						 "Out of memory");
@@ -106,7 +106,7 @@ static void testInsert(void) {
 	[a insert:probe(4) byIndex:1];
 	[a insert:probe(1)];
 	[a insert:probe(3) byIndex:2];
-	const Size expected[] = { 1, 2, 3, 4 };
+	const BaseSize expected[] = { 1, 2, 3, 4 };
 	CHECK(holds(a, expected, 4));
 
 	// ownership is only transferred on success
@@ -120,7 +120,7 @@ static void testInsert(void) {
 	[a clear];
 
 	// many inserts at the front grow the storage and keep the order
-	for (Size i = 0; i < 1000; i++)
+	for (BaseSize i = 0; i < 1000; i++)
 		[a insert:probe(i)];
 	CHECK([a count] == 1000);
 	CHECK([[a getFirst] value] == 999);
@@ -135,22 +135,22 @@ static void testRemove(void) {
 	CHECK_THROWS([a remove]);
 	CHECK_THROWS([a remove:0]);
 
-	for (Size i = 1; i <= 5; i++)
+	for (BaseSize i = 1; i <= 5; i++)
 		[a push:probe(i)];
 
 	atomic_store(&probeDeallocs, 0);
 	[a pop];
-	const Size afterPop[] = { 1, 2, 3, 4 };
+	const BaseSize afterPop[] = { 1, 2, 3, 4 };
 	CHECK(holds(a, afterPop, 4));
 	CHECK(atomic_load(&probeDeallocs) == 1);
 
 	[a remove];
-	const Size afterRemove[] = { 2, 3, 4 };
+	const BaseSize afterRemove[] = { 2, 3, 4 };
 	CHECK(holds(a, afterRemove, 3));
 	CHECK(atomic_load(&probeDeallocs) == 2);
 
 	[a remove:1];
-	const Size afterRemoveAt[] = { 2, 4 };
+	const BaseSize afterRemoveAt[] = { 2, 4 };
 	CHECK(holds(a, afterRemoveAt, 2));
 	CHECK(atomic_load(&probeDeallocs) == 3);
 	CHECK_THROWS([a remove:2]);
@@ -199,11 +199,11 @@ static void testRemove(void) {
 static void testSwap(void) {
 	Array<Probe*>* a = [Array new];
 	CHECK_THROWS([a swap:0 to:0]);
-	for (Size i = 1; i <= 3; i++)
+	for (BaseSize i = 1; i <= 3; i++)
 		[a push:probe(i)];
 
 	[a swap:0 to:2];
-	const Size swapped[] = { 3, 2, 1 };
+	const BaseSize swapped[] = { 3, 2, 1 };
 	CHECK(holds(a, swapped, 3));
 	[a swap:1 to:1];
 	CHECK(holds(a, swapped, 3));
@@ -224,13 +224,13 @@ static void testSort(void) {
 	// random data, strict and non-strict comparators, both directions
 	srand(1234);
 	for (int i = 0; i < 1000; i++)
-		[a push:probe((Size)(rand() % 100))];
+		[a push:probe((BaseSize)(rand() % 100))];
 	[a sort:greater];
 	CHECK(isSorted(a));
 	[a sort:less];
 	CHECK([[a getFirst] value] >= [[a getLast] value]);
 	BOOL descending = YES;
-	for (Size i = 1; i < [a count]; i++)
+	for (BaseSize i = 1; i < [a count]; i++)
 		if ([[a getByIndex:i - 1] value] < [[a getByIndex:i] value])
 			descending = NO;
 	CHECK(descending);
@@ -240,16 +240,16 @@ static void testSort(void) {
 	[a clear];
 
 	// stable
-	const Size values[] = { 30, 11, 20, 31, 12, 21, 32, 10 };
+	const BaseSize values[] = { 30, 11, 20, 31, 12, 21, 32, 10 };
 	for (int i = 0; i < 8; i++)
 		[a push:probe(values[i])];
 	[a sort:greaterByTens];
-	const Size stable[] = { 11, 12, 10, 20, 21, 30, 31, 32 };
+	const BaseSize stable[] = { 11, 12, 10, 20, 21, 30, 31, 32 };
 	CHECK(holds(a, stable, 8));
 	[a clear];
 
 	// already sorted and reversed input of any size (no deep recursion)
-	for (Size i = 0; i < 100000; i++)
+	for (BaseSize i = 0; i < 100000; i++)
 		[a push:probe(i)];
 	[a sort:greater];
 	CHECK([[a getLast] value] == 99999);
@@ -280,6 +280,54 @@ static void testContents(void) {
 	CHECK(atomic_load(&probeDeallocs) == 6);
 }
 
+static void testObject(void) {
+	Array* a = [Array new];
+	Array* b = [Array new];
+	CHECK([a isEqual:b] && [a hash] == [b hash]); // both empty
+
+	for (BaseSize i = 0; i < 3; i++) {
+		[a push:probe(i)];
+		[b push:probe(i)];
+	}
+	CHECK([a isEqual:b] && [a hash] == [b hash]);
+	CHECK(![a isEqual:nil]);
+	[b swap:0 to:1];
+	CHECK(![a isEqual:b]); // order matters
+	[b pop];
+	CHECK(![a isEqual:b]);
+
+	// equal objects, not only the same ones
+	Number* two = [[Number alloc] initValue:2];
+	CHECK([a getIndexByObject:two] == BASE_NOT_FOUND);
+	CHECK([a getIndexByEqualObject:two] == 2);
+	CHECK([a getIndexByEqualObject:nil] == BASE_NOT_FOUND);
+	[two set:9];
+	CHECK([a getIndexByEqualObject:two] == BASE_NOT_FOUND);
+	[two release];
+
+	// a copy shares the elements
+	atomic_store(&probeDeallocs, 0);
+	Array* copy = [a copy];
+	CHECK([copy isEqual:a]);
+	CHECK([copy getFirst] == [a getFirst]);
+	[a release];
+	CHECK(atomic_load(&probeDeallocs) == 0); // still held by the copy
+	CHECK([[copy getLast] value] == 2);
+
+	String* d = [copy copyDescription];
+	CHECK([d compareBuffer:"[0, 1, 2]"]);
+	[d release];
+	[copy push:[[String alloc] initWithBuffer:"text"]];
+	[copy push:[Array new]];
+	d = [copy copyDescription];
+	CHECK([d compareBuffer:"[0, 1, 2, text, []]"]);
+	[d release];
+
+	[copy release];
+	CHECK(atomic_load(&probeDeallocs) == 3);
+	[b release];
+}
+
 void testArray(void) {
 	testCapacity();
 	testAccess();
@@ -288,4 +336,5 @@ void testArray(void) {
 	testSwap();
 	testSort();
 	testContents();
+	testObject();
 }

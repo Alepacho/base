@@ -232,7 +232,7 @@ static void testRead(void) {
 
 static void testBinary(void) {
 	const char data[] = { 'a', '\0', 'b', '\n', '\r', (char)0xFF, 'c' };
-	const Size size = sizeof(data);
+	const BaseSize size = sizeof(data);
 
 	File* file = [File new];
 	[file open:BASE_FILE_WRITE | BASE_FILE_BINARY withBuffer:path];
@@ -338,6 +338,27 @@ static void testErrors(void) {
 	[file release];
 }
 
+static void testRecovery(void) {
+	writeFile(path, "hello");
+	File* file = [File new];
+	String* str = [String new];
+
+	// a failed operation does not break the following ones
+	[file open:BASE_FILE_READ withBuffer:path];
+	CHECK_THROWS([file writeBuffer:"x"]);
+	[file seekStart];
+	[file readWithString:str];
+	CHECK([str compareBuffer:"hello"]);
+	char buf[8];
+	[file seekStart];
+	CHECK([file readWithBuffer:buf size:5] == 5);
+	CHECK([file length] == 5);
+	[file close];
+
+	[str release];
+	[file release];
+}
+
 static void testDealloc(void) {
 	// releasing an open file closes and flushes it
 	File* file = [File new];
@@ -355,6 +376,7 @@ void testFile(void) {
 	testRead();
 	testBinary();
 	testErrors();
+	testRecovery();
 	testDealloc();
 	cleanup();
 }

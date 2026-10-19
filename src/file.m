@@ -67,18 +67,26 @@ static const char* baseFileModeString(BaseFileMode mode) {
 
 // @private
 
+// Called first by every operation on the open file.
 - (void)checkFile {
 	if (![self isOpen])
 		@throw [[Exception alloc]
 			initWithFormat:"File '%s' is not open.", [path buffer]];
+
+	// The error flag of a stream stays set: one failed operation would make
+	// every later one fail too. errno is reset so that an error reports its
+	// own cause, not the one of an earlier failure.
+	clearerr(file);
+	errno = 0;
 }
 
 - (void)throwError:(const char*)what {
 	const int err = errno; // before anything else can overwrite it
-	@throw [[Exception alloc] initWithFormat:"Failed to %s '%s' file: %s",
-											 what,
-											 [path buffer],
-											 strerror(err)];
+	@throw [[Exception alloc]
+		initWithFormat:"Failed to %s '%s' file: %s",
+					   what,
+					   [path buffer],
+					   err ? strerror(err) : "unknown error"];
 }
 
 - (void)open {
@@ -104,14 +112,14 @@ static const char* baseFileModeString(BaseFileMode mode) {
 
 // Replaces the contents of `str` with up to `limit` bytes read from the
 // current position.
-- (void)read:(String*)str limit:(Size)limit {
+- (void)read:(String*)str limit:(BaseSize)limit {
 	[self checkFile];
 	[str clear];
 
 	char chunk[4096];
-	Size total = 0;
+	BaseSize total = 0;
 	while (total < limit) {
-		const Size left = limit - total;
+		const BaseSize left = limit - total;
 		const size_t want = left < sizeof(chunk) ? (size_t)left : sizeof(chunk);
 		const size_t got = fread(chunk, 1, want, file);
 		[str appendBuffer:chunk length:got];
@@ -154,25 +162,30 @@ static const char* baseFileModeString(BaseFileMode mode) {
 	return file != nil;
 }
 
-- (Size)length {
+- (BaseSize)length {
 	[self checkFile];
 
 	const base_file_offset pos = base_file_tell(file);
 	if (pos < 0) [self throwError:"get size of"];
 	if (base_file_seek(file, 0, SEEK_END) != 0) [self throwError:"seek in"];
 	const base_file_offset end = base_file_tell(file);
-	base_file_seek(file, pos, SEEK_SET);
-	if (end < 0) [self throwError:"get size of"];
+	const int tellError = errno;
+	// always go back, then report what failed first
+	if (base_file_seek(file, pos, SEEK_SET) != 0) [self throwError:"seek in"];
+	if (end < 0) {
+		errno = tellError;
+		[self throwError:"get size of"];
+	}
 
-	return (Size)end;
+	return (BaseSize)end;
 }
 
-- (Size)position {
+- (BaseSize)position {
 	[self checkFile];
 
 	const base_file_offset pos = base_file_tell(file);
 	if (pos < 0) [self throwError:"get position in"];
-	return (Size)pos;
+	return (BaseSize)pos;
 }
 
 - (void)open:(BaseFileMode)fileMode withBuffer:(const char*)pathName {
@@ -202,7 +215,7 @@ static const char* baseFileModeString(BaseFileMode mode) {
 	return result;
 }
 
-- (void)seek:(Size)pos {
+- (void)seek:(BaseSize)pos {
 	[self checkFile];
 	if (base_file_seek(file, (base_file_offset)pos, SEEK_SET) != 0)
 		[self throwError:"seek in"];
@@ -217,14 +230,14 @@ static const char* baseFileModeString(BaseFileMode mode) {
 	if (base_file_seek(file, 0, SEEK_END) != 0) [self throwError:"seek in"];
 }
 
-- (Size)readWithBuffer:(char*)buf size:(Size)size {
+- (BaseSize)readWithBuffer:(char*)buf size:(BaseSize)size {
 	[self checkFile];
 	if (buf == nil)
 		@throw [[Exception alloc] initWithFormat:"Unable to read file '%s'. %s",
 												 [path buffer],
 												 "Buffer is not defined!"];
 
-	const Size read = fread(buf, sizeof(char), size, file);
+	const BaseSize read = fread(buf, sizeof(char), size, file);
 	if (read < size && ferror(file)) [self throwError:"read"];
 
 	if (!(mode & BASE_FILE_BINARY)) buf[read] = '\0';
@@ -235,24 +248,24 @@ static const char* baseFileModeString(BaseFileMode mode) {
 	[self read:str limit:BASE_NOT_FOUND];
 }
 
-- (void)readWithString:(String*)str size:(Size)size {
+- (void)readWithString:(String*)str size:(BaseSize)size {
 	[self read:str limit:size];
 }
 
-- (Size)write:(const void*)data size:(Size)size {
+- (BaseSize)write:(const void*)data size:(BaseSize)size {
 	[self checkFile];
 
-	const Size written = fwrite(data, 1, size, file);
+	const BaseSize written = fwrite(data, 1, size, file);
 	if (written < size) [self throwError:"write to"];
 	return written;
 }
 
-- (Size)writeBuffer:(const char*)buf {
+- (BaseSize)writeBuffer:(const char*)buf {
 	if (buf == nil) return 0;
 	return [self write:buf size:strlen(buf)];
 }
 
-- (Size)writeString:(String*)str {
+- (BaseSize)writeString:(String*)str {
 	return [self writeBuffer:[str buffer]];
 }
 

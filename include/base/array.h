@@ -5,7 +5,7 @@
 #include "base.h"
 
 // Returns YES when `a` must be placed after `b` (e.g. `a > b` sorts ascending).
-typedef BOOL (*_BaseSortFn)(id a, id b);
+typedef BOOL (*BaseSortFn)(id a, id b);
 
 // Ownership: the array takes over the reference passed to `push:`/`insert:`
 // and releases its elements when they are removed (unless asked not to)
@@ -17,16 +17,16 @@ typedef BOOL (*_BaseSortFn)(id a, id b);
 // * subtypes are acceptable
 @interface Array<__covariant T> : BaseObject {
 	T* data;
-	Size used;
-	Size size;
+	BaseSize used;
+	BaseSize size;
 }
 
 - (id)init;
-- (id)initWithSize:(Size)newSize;
+- (id)initWithSize:(BaseSize)newSize;
 - (void)dealloc;
 
-- (Size)count;
-- (Size)size;
+- (BaseSize)count;
+- (BaseSize)size;
 
 // Releases all elements.
 - (void)clear;
@@ -40,16 +40,16 @@ typedef BOOL (*_BaseSortFn)(id a, id b);
 // Inserts at the beginning.
 - (void)insert:(T)value;
 // `index` may be equal to `count` to append.
-- (void)insert:(T)value byIndex:(Size)index;
+- (void)insert:(T)value byIndex:(BaseSize)index;
 
 // Removes the first element.
 - (void)remove;
-- (void)remove:(Size)index;
-- (void)remove:(Size)index withRelease:(BOOL)flag;
+- (void)remove:(BaseSize)index;
+- (void)remove:(BaseSize)index withRelease:(BOOL)flag;
 
-- (void)swap:(Size)a to:(Size)b;
+- (void)swap:(BaseSize)a to:(BaseSize)b;
 // Stable sort.
-- (id)sort:(_BaseSortFn)func;
+- (id)sort:(BaseSortFn)func;
 
 // Return nil on an empty array.
 - (T)getFirst;
@@ -59,8 +59,19 @@ typedef BOOL (*_BaseSortFn)(id a, id b);
 // - (T)getByObject:(T)object;
 
 // Returns BASE_NOT_FOUND when the object is not in the array.
-- (Size)getIndexByObject:(T)object;
-- (T)getByIndex:(Size)index;
+// `getIndexByObject:` looks for that very object, `getIndexByEqualObject:`
+// for one that `isEqual:` to it.
+- (BaseSize)getIndexByObject:(T)object;
+- (BaseSize)getIndexByEqualObject:(T)object;
+- (T)getByIndex:(BaseSize)index;
+
+// Arrays are equal when their elements are equal, in the same order.
+- (BOOL)isEqual:(id)object;
+- (BaseSize)hash;
+// A new array holding the same elements (they are retained, not copied).
+- (id)copy;
+// "[first, second]", from the descriptions of the elements.
+- (String*)copyDescription;
 @end
 
 #endif // BASE_ARRAY_H

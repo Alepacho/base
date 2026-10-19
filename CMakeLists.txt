@@ -4,6 +4,10 @@ cmake_minimum_required(VERSION 3.27)
 # language from the .m extension), so only C has to be enabled.
 project(base LANGUAGES C)
 
+if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
+    message(FATAL_ERROR "base supports 64-bit platforms only")
+endif()
+
 option(BASE_BUILD_TESTS "Build base tests and the playground" ${PROJECT_IS_TOP_LEVEL})
 option(BASE_SANITIZE "Build base with AddressSanitizer and UBSan" OFF)
 
@@ -17,6 +21,7 @@ add_library(base STATIC
     ${BASE_SRC_DIR}/base.m
     ${BASE_SRC_DIR}/system.m
     ${BASE_SRC_DIR}/array.m
+    ${BASE_SRC_DIR}/dictionary.m
     ${BASE_SRC_DIR}/string.m
     ${BASE_SRC_DIR}/exception.m
     ${BASE_SRC_DIR}/selector.m

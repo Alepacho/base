@@ -1,5 +1,6 @@
 #include "base/array.h"
 #include "base/exception.h"
+#include "base/string.h"
 #include "internal.h"
 
 #include <stdint.h>
@@ -10,7 +11,7 @@
 
 // @private
 
-- (void)resize:(Size)newSize {
+- (void)resize:(BaseSize)newSize {
 	if (newSize == 0) {
 		free(self->data);
 		self->data = nil;
@@ -20,12 +21,11 @@
 
 	// The byte count must not wrap around (it would allocate too little).
 	if (newSize > SIZE_MAX / sizeof(id))
-		baseThrowOutOfMemory("an array can not hold %llu elements!", newSize);
+		baseThrowOutOfMemory("an array can not hold %zu elements!", newSize);
 
 	id* newData = realloc(self->data, (size_t)newSize * sizeof(id));
 	if (newData == nil)
-		baseThrowOutOfMemory("unable to allocate %llu array elements!",
-							 newSize);
+		baseThrowOutOfMemory("unable to allocate %zu array elements!", newSize);
 	self->data = newData;
 	self->size = newSize;
 }
@@ -35,10 +35,10 @@
 	[self resize:(self->size < 4) ? 4 : self->size * 2];
 }
 
-- (void)checkIndex:(Size)index {
+- (void)checkIndex:(BaseSize)index {
 	if (index >= self->used)
 		@throw [[Exception alloc]
-			initWithFormat:"Wrong array index '%llu' (while count is %llu)!",
+			initWithFormat:"Wrong array index '%zu' (while count is %zu)!",
 						   index,
 						   self->used];
 }
@@ -56,7 +56,7 @@
 	return self;
 }
 
-- (id)initWithSize:(Size)newSize {
+- (id)initWithSize:(BaseSize)newSize {
 	self = [self init];
 	if (self) {
 		@try {
@@ -75,11 +75,11 @@
 	[super dealloc];
 }
 
-- (Size)count {
+- (BaseSize)count {
 	return self->used;
 }
 
-- (Size)size {
+- (BaseSize)size {
 	return self->size;
 }
 
@@ -127,23 +127,33 @@
 
 // ! quite useless method
 // - (id)getByObject:(id)object {
-// 	for (Size i = 0; i < [self count]; i++) {
+// 	for (BaseSize i = 0; i < [self count]; i++) {
 // 		if (self->data[i] == object) return self->data[i];
 // 	}
 // 	return nil;
 // }
 
-- (Size)getIndexByObject:(id)object {
+- (BaseSize)getIndexByObject:(id)object {
 	if (object == nil) return BASE_NOT_FOUND;
 
-	for (Size i = 0; i < self->used; i++) {
+	for (BaseSize i = 0; i < self->used; i++) {
 		if (self->data[i] == object) return i;
 	}
 
 	return BASE_NOT_FOUND;
 }
 
-- (id)getByIndex:(Size)index {
+- (BaseSize)getIndexByEqualObject:(id)object {
+	if (object == nil) return BASE_NOT_FOUND;
+
+	for (BaseSize i = 0; i < self->used; i++) {
+		if (self->data[i] == object || [self->data[i] isEqual:object]) return i;
+	}
+
+	return BASE_NOT_FOUND;
+}
+
+- (id)getByIndex:(BaseSize)index {
 	[self checkIndex:index];
 	return self->data[index];
 }
@@ -152,13 +162,13 @@
 	[self insert:value byIndex:0];
 }
 
-- (void)insert:(id)value byIndex:(Size)index {
+- (void)insert:(id)value byIndex:(BaseSize)index {
 	if (value == nil)
 		@throw [[Exception alloc]
 			initWithFormat:"Inserted element in array is NIL"];
 	if (index > self->used)
 		@throw [[Exception alloc]
-			initWithFormat:"Wrong array index '%llu' (while count is %llu)!",
+			initWithFormat:"Wrong array index '%zu' (while count is %zu)!",
 						   index,
 						   self->used];
 
@@ -174,11 +184,11 @@
 	[self remove:0 withRelease:YES];
 }
 
-- (void)remove:(Size)index {
+- (void)remove:(BaseSize)index {
 	[self remove:index withRelease:YES];
 }
 
-- (void)remove:(Size)index withRelease:(BOOL)flag {
+- (void)remove:(BaseSize)index withRelease:(BOOL)flag {
 	[self checkIndex:index];
 
 	id value = self->data[index];
@@ -190,7 +200,7 @@
 	if (flag) [value release];
 }
 
-- (void)swap:(Size)a to:(Size)b {
+- (void)swap:(BaseSize)a to:(BaseSize)b {
 	[self checkIndex:a];
 	[self checkIndex:b];
 
@@ -199,23 +209,23 @@
 	self->data[b] = t;
 }
 
-- (id)sort:(_BaseSortFn)func {
-	const Size n = self->used;
+- (id)sort:(BaseSortFn)func {
+	const BaseSize n = self->used;
 	if (n < 2) return self;
 
 	// Bottom-up merge sort: stable, O(n log n), no recursion and it never
 	// reads out of bounds even with a non-strict comparator.
 	id* tmp = malloc((size_t)n * sizeof(id)); // n <= size, cannot overflow
 	if (tmp == nil)
-		baseThrowOutOfMemory("unable to sort %llu array elements!", n);
+		baseThrowOutOfMemory("unable to sort %zu array elements!", n);
 
 	id* src = self->data;
 	id* dst = tmp;
-	for (Size width = 1; width < n; width *= 2) {
-		for (Size lo = 0; lo < n; lo += 2 * width) {
-			const Size mid = (lo + width < n) ? lo + width : n;
-			const Size hi = (lo + 2 * width < n) ? lo + 2 * width : n;
-			Size i = lo, j = mid, k = lo;
+	for (BaseSize width = 1; width < n; width *= 2) {
+		for (BaseSize lo = 0; lo < n; lo += 2 * width) {
+			const BaseSize mid = (lo + width < n) ? lo + width : n;
+			const BaseSize hi = (lo + 2 * width < n) ? lo + 2 * width : n;
+			BaseSize i = lo, j = mid, k = lo;
 			while (i < mid && j < hi) {
 				// take from the right only when strictly needed to stay stable
 				dst[k++] = func(src[i], src[j]) ? src[j++] : src[i++];
@@ -233,6 +243,49 @@
 	if (src != self->data) memcpy(self->data, src, n * sizeof(id));
 	free(tmp);
 	return self;
+}
+
+- (BOOL)isEqual:(id)object {
+	if (self == object) return YES;
+	if (object == nil || ![object isKindOfClass:[Array class]]) return NO;
+
+	Array* other = object;
+	if ([other count] != self->used) return NO;
+	for (BaseSize i = 0; i < self->used; i++) {
+		if (![self->data[i] isEqual:[other getByIndex:i]]) return NO;
+	}
+	return YES;
+}
+
+- (BaseSize)hash {
+	BaseSize h = self->used;
+	for (BaseSize i = 0; i < self->used; i++) {
+		h = h * 31 + [self->data[i] hash];
+	}
+	return h;
+}
+
+- (id)copy {
+	Array* copy = [[[self class] alloc] initWithSize:self->used];
+	for (BaseSize i = 0; i < self->used; i++) {
+		[copy push:[self->data[i] retain]];
+	}
+	return copy;
+}
+
+- (String*)copyDescription {
+	String* str = [[String alloc] initWithBuffer:"["];
+	@try {
+		for (BaseSize i = 0; i < self->used; i++) {
+			if (i > 0) [str appendBuffer:", "];
+			baseAppendDescription(str, self->data[i]);
+		}
+		[str appendChar:']'];
+	} @catch (id ex) {
+		[str release];
+		@throw;
+	}
+	return str;
 }
 
 @end

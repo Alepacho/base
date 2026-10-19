@@ -121,7 +121,7 @@ static void testSet(void) {
 
 	CHECK([s setFormat:"%.2f", 1.5] == s);
 	CHECK([s compareBuffer:"1.50"]);
-	[s setFormat:"%llu", (Size)18446744073709551615ULL];
+	[s setFormat:"%zu", (BaseSize)18446744073709551615ULL];
 	CHECK([s compareBuffer:"18446744073709551615"]);
 	setTo(s, "%s%s", "a", "b");
 	CHECK([s compareBuffer:"ab"]);
@@ -216,6 +216,64 @@ static void testGrowth(void) {
 	[s release];
 }
 
+static void testObject(void) {
+	String* a = [[String alloc] initWithBuffer:"key"];
+	String* b = [[String alloc] initWithBuffer:"key"];
+	String* c = [[String alloc] initWithBuffer:"kez"];
+	CHECK([a isEqual:b] && [a hash] == [b hash]);
+	CHECK(![a isEqual:c]);
+	CHECK(![a isEqual:nil]);
+	Number* n = [Number new];
+	CHECK(![a isEqual:n]);
+	[n release];
+
+	// NULs count
+	String* x = [[String alloc] initWithBuffer:"a\0b" length:3];
+	String* y = [[String alloc] initWithBuffer:"a\0c" length:3];
+	String* z = [[String alloc] initWithBuffer:"a"];
+	CHECK(![x isEqual:y]);
+	CHECK(![x isEqual:z]);
+	[z release];
+	[y release];
+
+	String* copy = [x copy];
+	CHECK(copy != x && [copy isEqual:x]);
+	CHECK([copy buffer] != [x buffer]);
+	[copy release];
+	[x release];
+
+	String* d = [a copyDescription];
+	CHECK([d isEqual:a] && d != a);
+	[d release];
+
+	[c release];
+	[b release];
+	[a release];
+}
+
+static void testMemory(void) {
+	String* s = [String new];
+	for (int i = 0; i < 100000; i++)
+		[s appendChar:'x'];
+
+	CHECK([s shrink] == s);
+	CHECK([s length] == 100000);
+	CHECK([s buffer][99999] == 'x' && [s buffer][100000] == '\0');
+
+	// clearing a big string gives the memory back, it stays usable
+	[s clear];
+	CHECK([s length] == 0);
+	CHECK([s compareBuffer:""]);
+	[s appendBuffer:"again"];
+	CHECK([s compareBuffer:"again"]);
+
+	// a small one keeps its buffer
+	const char* small = [s buffer];
+	[s clear];
+	CHECK([s buffer] == small);
+	[s release];
+}
+
 void testString(void) {
 	testInit();
 	testCompare();
@@ -224,4 +282,6 @@ void testString(void) {
 	testAliasing();
 	testBinary();
 	testGrowth();
+	testObject();
+	testMemory();
 }

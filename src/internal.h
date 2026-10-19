@@ -17,4 +17,8 @@ void baseReportException(const char* prefix, id exception);
 // Releases a thrown object, if it can be released at all.
 void baseReleaseException(id exception);
 
+// Appends the description of any object (`copyDescription`, or its class and
+// address for objects that do not have one) to `str`.
+void baseAppendDescription(String* str, id object);
+
 #endif // BASE_INTERNAL_H

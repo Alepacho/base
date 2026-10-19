@@ -22,8 +22,8 @@ static atomic_int workerDone = 0;
 
 @implementation Worker
 - (id)sum:(Array<Number*>*)args {
-	Size total = 0;
-	for (Size i = 0; i < [args count]; i++)
+	BaseSize total = 0;
+	for (BaseSize i = 0; i < [args count]; i++)
 		total += [[args getByIndex:i] value];
 	return [[Number alloc] initValue:total];
 }
@@ -52,7 +52,7 @@ static atomic_int workerDone = 0;
 	return nil;
 }
 - (id)fail:(Array*)args {
-	@throw [[Exception alloc] initWithFormat:"failed with %llu", [args count]];
+	@throw [[Exception alloc] initWithFormat:"failed with %zu", [args count]];
 }
 - (int)counter {
 	return atomic_load(&counter);
@@ -65,9 +65,9 @@ static atomic_int workerDone = 0;
 }
 @end
 
-static Array* numbers(Size count) {
+static Array* numbers(BaseSize count) {
 	Array* a = [Array new];
-	for (Size i = 1; i <= count; i++)
+	for (BaseSize i = 1; i <= count; i++)
 		[a push:probe(i)];
 	return a;
 }
@@ -146,7 +146,7 @@ static void testJoin(void) {
 	CHECK([t result] == nil); // +exit: returns no object
 
 	code = [Array new];
-	[code push:[[Number alloc] initValue:(Size)-1]];
+	[code push:[[Number alloc] initValue:(BaseSize)-1]];
 	[t create:job(w, @selector(quit:)) args:code];
 	CHECK([t join] == -1);
 
@@ -216,6 +216,17 @@ static void testDetach(void) {
 		[Thread yield];
 	CHECK(atomic_load(&workerDone) == 1);
 	CHECK(atomic_load(&probeDeallocs) == 1);
+
+	// a detached thread that calls +exit: still releases its arguments
+	t = [Thread new];
+	atomic_store(&probeDeallocs, 0);
+	Array* code = numbers(1);
+	[t create:job(w, @selector(quit:)) args:code];
+	CHECK([t detach]);
+	for (int i = 0; i < 1000000 && atomic_load(&probeDeallocs) == 0; i++)
+		[Thread yield];
+	CHECK(atomic_load(&probeDeallocs) == 1);
+	[t release];
 
 	// detaching a thread that is finishing or has already finished
 	t = [Thread new];
@@ -358,6 +369,129 @@ static void testMutex(void) {
 	[m release];
 }
 
+// A queue of one Number, filled by a producer and emptied by consumers.
+@interface Box : BaseObject {
+  @public
+	Mutex* mutex;
+	Condition* changed;
+	BaseSize value; // 0 when empty
+	BaseSize taken;
+	BOOL closed;
+}
+- (id)consume:(Array*)args;
+@end
+
+@implementation Box
+- (id)init {
+	self = [super init];
+	if (self) {
+		mutex = [Mutex new];
+		changed = [Condition new];
+	}
+	return self;
+}
+- (void)dealloc {
+	[changed release];
+	[mutex release];
+	[super dealloc];
+}
+- (id)consume:(Array*)args {
+	BaseSize sum = 0;
+	[mutex lock];
+	for (;;) {
+		while (value == 0 && !closed)
+			[changed wait:mutex];
+		if (value == 0) break; // closed and empty
+		sum += value;
+		value = 0;
+		taken++;
+		[changed broadcast];
+	}
+	[mutex unlock];
+	return [[Number alloc] initValue:sum];
+}
+@end
+
+static void testCondition(void) {
+	Box* box = [Box new];
+
+	// producer / consumers: every value is consumed exactly once
+	Thread* consumers[4];
+	for (int i = 0; i < 4; i++) {
+		consumers[i] = [Thread new];
+		[consumers[i] create:[[Selector new] setObject:box
+										   setSelector:@selector(consume:)]];
+	}
+	for (BaseSize v = 1; v <= 1000; v++) {
+		[box->mutex lock];
+		while (box->value != 0)
+			[box->changed wait:box->mutex];
+		box->value = v;
+		[box->changed broadcast];
+		[box->mutex unlock];
+	}
+	[box->mutex lock];
+	while (box->value != 0)
+		[box->changed wait:box->mutex];
+	box->closed = YES;
+	[box->changed broadcast];
+	[box->mutex unlock];
+
+	BaseSize total = 0;
+	for (int i = 0; i < 4; i++) {
+		CHECK([consumers[i] join] == 0);
+		Number* sum = [consumers[i] result];
+		total += [sum value];
+		[sum release];
+		[consumers[i] release];
+	}
+	CHECK(total == 1000 * 1001 / 2);
+	CHECK(box->taken == 1000);
+
+	// timeouts
+	[box->mutex lock];
+	CHECK(![box->changed wait:box->mutex timeout:0.05]);
+	CHECK(![box->changed wait:box->mutex timeout:0]);
+	CHECK(![box->changed wait:box->mutex timeout:-1]);
+	CHECK(![box->changed wait:box->mutex timeout:0.0 / 0.0]);
+	[box->mutex unlock];
+	// signals without waiters are harmless
+	[box->changed signal];
+	[box->changed broadcast];
+
+	// a signal before the timeout
+	box->closed = NO;
+	Thread* t = [Thread new];
+	[t create:[[Selector new] setObject:box setSelector:@selector(consume:)]];
+	[box->mutex lock];
+	box->value = 5;
+	[box->changed broadcast];
+	BOOL signaled = YES;
+	while (box->value != 0 && signaled)
+		signaled = [box->changed wait:box->mutex timeout:10];
+	CHECK(signaled);
+	box->closed = YES;
+	[box->changed broadcast];
+	[box->mutex unlock];
+	[t join];
+	Number* sum = [t result];
+	CHECK([sum value] == 5);
+	[sum release];
+	[t release];
+
+	// a recursive mutex works too
+	Mutex* recursive = [[Mutex alloc] initRecursive:YES];
+	[recursive lock];
+	CHECK(![box->changed wait:recursive timeout:0.01]);
+	[recursive unlock];
+	[recursive release];
+
+	CHECK_THROWS([box->changed wait:nil]);
+	CHECK_THROWS([box->changed wait:nil timeout:1]);
+
+	[box release];
+}
+
 void testThread(void) {
 	testIdle();
 	testRunning();
@@ -366,4 +500,5 @@ void testThread(void) {
 	testExceptions();
 	testConcurrency();
 	testMutex();
+	testCondition();
 }

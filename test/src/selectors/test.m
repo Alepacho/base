@@ -55,7 +55,7 @@ static TestSelectors* test;
 
 - (void)callbackArg:(id)arg {
 	[System debug:"Callback Argument!"];
-	[System debug:"Argument: %llu", [(Number*)arg value]];
+	[System debug:"Argument: %zu", [(Number*)arg value]];
 	[arg release];
 }
 

@@ -3,7 +3,10 @@
 
 #include "base/all.h"
 
+#include <errno.h>
+#include <limits.h>
 #include <stdatomic.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -41,12 +44,13 @@ void unitCheck(BOOL ok, const char* file, int line, const char* text);
 @end
 
 extern atomic_int probeDeallocs;
-Probe* probe(Size value);
+Probe* probe(BaseSize value);
 
 void testBaseObject(void);
 void testString(void);
 void testException(void);
 void testArray(void);
+void testDictionary(void);
 void testFile(void);
 void testSelector(void);
 void testThread(void);

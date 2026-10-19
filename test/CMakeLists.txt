@@ -24,6 +24,7 @@ add_executable(base_tests
     ${TEST_SRC_DIR}/unit/test_string.m
     ${TEST_SRC_DIR}/unit/test_exception.m
     ${TEST_SRC_DIR}/unit/test_array.m
+    ${TEST_SRC_DIR}/unit/test_dictionary.m
     ${TEST_SRC_DIR}/unit/test_file.m
     ${TEST_SRC_DIR}/unit/test_selector.m
     ${TEST_SRC_DIR}/unit/test_thread.m

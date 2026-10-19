@@ -6,12 +6,15 @@ on Windows and Linux it runs on top of [libobjc2](https://github.com/gnustep/lib
 
 ## Features
 
-* Easy string manipulation
-* Simple Arrays
+* Easy string manipulation (binary safe)
+* Arrays and dictionaries
 * Files
-* Threads and selectors
+* Threads, mutexes, condition variables and selectors
 * System related methods
 * Exception handling
+
+Base supports 64-bit platforms only (macOS, Linux and Windows). Sizes, counts and
+indexes use `BaseSize`, which is `size_t`: print it with `%zu`.
 
 ## Memory management
 
@@ -20,7 +23,10 @@ Base uses manual retain/release (compile your code with `-fno-objc-arc`):
 * `alloc`/`new` give you one reference, `retain` adds one, `release` drops one.
   Never call `dealloc` directly.
 * `Array` takes over the reference passed to `push:`/`insert:` and releases its elements
-  when they are removed or when the array is destroyed.
+  when they are removed or when the array is destroyed. `Dictionary` does the same with
+  the key and the value passed to `set:forKey:`.
+* Methods whose name starts with `copy` (`copy`, `copyDescription`, `copyKeys`...)
+  return a new object that you own.
 * `Thread` takes over the selector and the arguments passed to `create:`.
 * A caught `Exception` belongs to the `@catch` block: `release` it when you are done.
 

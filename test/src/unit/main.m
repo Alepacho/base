@@ -28,7 +28,7 @@ atomic_int probeDeallocs = 0;
 }
 @end
 
-Probe* probe(Size value) {
+Probe* probe(BaseSize value) {
 	return [[Probe alloc] initValue:value];
 }
 
@@ -65,6 +65,7 @@ int main(int argc, char** argv) {
 	testString();
 	testException();
 	testArray();
+	testDictionary();
 	testFile();
 	testSelector();
 	testThread();

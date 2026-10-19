@@ -21,7 +21,7 @@
 
 - (Number*)function:(Array<Number*>*)args {
 	const Number* n = [args getFirst];
-	[System debug:"n: %llu", [n value]];
+	[System debug:"n: %zu", [n value]];
 
 	int i = 0;
 	for (;;) {
@@ -49,7 +49,7 @@
 	}
 	int code = [t join];
 	Number* result = [t result];
-	[System debug:"Exit code: %i, result: %llu", code, [result value]];
+	[System debug:"Exit code: %i, result: %zu", code, [result value]];
 
 	[result release];
 	[t release];
