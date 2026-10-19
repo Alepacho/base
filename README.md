@@ -1,5 +1,7 @@
 # Base
 
+[![CI](https://github.com/Alepacho/base/actions/workflows/ci.yml/badge.svg)](https://github.com/Alepacho/base/actions/workflows/ci.yml)
+
 Base is a small collection of utilities for projects written in Objective-C.
 Base does not require the Foundation framework: on macOS it only uses `NSObject` from the system `libobjc`,
 on Windows and Linux it runs on top of [libobjc2](https://github.com/gnustep/libobjc2).
@@ -48,7 +50,7 @@ Base requires the following dependencies:
 
 ```
     * clang   (at least 16)
-    * lld     (for Windows and Linux only)
+    * lld     (for Windows and Linux only, see "Linker" below)
     * libobjc2 (at least 2.2, for Windows and Linux only; 2.3 is bundled as a submodule)
     * cmake   (at least 3.27)
     * ninja   (you can also use makefile)
@@ -57,8 +59,41 @@ Base requires the following dependencies:
 > **Note:** libobjc2 before 2.2 corrupts arguments of the first message sent to a class on
 > AArch64 (fixed upstream in gnustep/libobjc2#266).
 
-Base can be added to another CMake project with `add_subdirectory()`; link against the `base` target.
-Tests are only built when Base is the top-level project (see the `BASE_BUILD_TESTS` option).
+The version is in `include/base/version.h` (`BASE_VERSION_STRING`, `BASE_VERSION`).
+
+### In another CMake project
+
+Either add Base as a subdirectory:
+
+```cmake
+add_subdirectory(vendor/base)
+target_link_libraries(app PRIVATE base::base)
+```
+
+or install it and use `find_package()`:
+
+```bash
+cmake --install build --prefix <prefix>
+```
+
+```cmake
+find_package(base 0.1 REQUIRED)  # with -DCMAKE_PREFIX_PATH=<prefix>
+target_link_libraries(app PRIVATE base::base)
+```
+
+On Windows and Linux an installed Base looks for libobjc2 with `find_package(libobjc)`,
+so libobjc2 has to be installed too (`cmake --install` in its build directory).
+`test/package/` is a minimal project that does exactly this.
+
+Options (the first two default to `ON` only when Base is the top-level project):
+
+| Option             | Default | Meaning                                                    |
+|--------------------|---------|------------------------------------------------------------|
+| `BASE_BUILD_TESTS` | `ON`    | Build the unit tests and the playground                    |
+| `BASE_INSTALL`     | `ON`    | Generate the install rules                                 |
+| `BASE_SANITIZE`    | `OFF`   | Build with AddressSanitizer and UBSan (never exported)     |
+| `BASE_WERROR`      | `OFF`   | Treat warnings in Base and its tests as errors (CI)        |
+| `BASE_USE_LLD`     | `ON`    | Windows and Linux: link the targets using Base with lld    |
 
 ### Windows and Linux
 
@@ -81,7 +116,19 @@ cmake -S . -B build -G Ninja -DCMAKE_C_COMPILER=clang
 cmake --build build
 ```
 
-A libobjc2 built somewhere else can be used with `-DBASE_OBJC2_DIR=<source dir> -DBASE_OBJC2_BUILD_DIR=<build dir>`.
+Base finds libobjc2 in this order:
+
+1. `-DBASE_OBJC2_BUILD_DIR=<build dir>` (with `-DBASE_OBJC2_DIR=<source dir>` when it is not
+   the submodule): a libobjc2 build tree.
+2. An `objc` target that already exists, e.g. libobjc2 added with `add_subdirectory()`.
+3. An installed libobjc2 (`find_package(libobjc)`), add its prefix to `CMAKE_PREFIX_PATH`.
+4. The submodule built in `3rdparty/libobjc2/build`, as above.
+
+#### Linker
+
+Targets that link Base are linked with lld (`-fuse-ld=lld`). A target can use another
+linker by setting its `LINKER_TYPE` property (CMake 3.29+) or its `BASE_NO_LLD` property;
+`-DBASE_USE_LLD=OFF` turns it off for the whole build.
 
 ### macOS
 
@@ -102,6 +149,10 @@ ctest --test-dir build --output-on-failure
 
 Unit tests live in `test/src/unit/`, one file per module. `System`'s `fatal:` and the uncaught
 exception handler end the process, so they run as separate ctest tests that check the output.
+
+CI (`.github/workflows/ci.yml`) runs them with `-DBASE_WERROR=ON` on macOS (Release,
+ASan+UBSan, TSan), Linux x86_64 and arm64 (Release, ASan+UBSan) and Windows (Release, Debug),
+and checks that an installed Base works with `find_package()`.
 
 ## Playground
 

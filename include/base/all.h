@@ -11,5 +11,6 @@
 #include "string.h"
 #include "system.h"
 #include "thread.h"
+#include "version.h"
 
 #endif // BASE_ALL_H

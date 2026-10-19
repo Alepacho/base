@@ -1,0 +1,143 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  macos:
+    name: macOS ${{ matrix.config.name }}
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - name: Release
+            flags: -DCMAKE_BUILD_TYPE=Release
+          - name: ASan+UBSan
+            flags: -DCMAKE_BUILD_TYPE=Debug -DBASE_SANITIZE=ON
+          - name: TSan
+            flags: >-
+              -DCMAKE_BUILD_TYPE=Debug
+              -DCMAKE_C_FLAGS=-fsanitize=thread
+              -DCMAKE_EXE_LINKER_FLAGS=-fsanitize=thread
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: brew install ninja
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DBASE_WERROR=ON ${{ matrix.config.flags }}
+      - name: Build
+        run: cmake --build build
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+      - name: Install and use the package
+        if: matrix.config.name == 'Release'
+        run: |
+          cmake --install build --prefix "$PWD/prefix"
+          cmake -S test/package -B package -G Ninja -DCMAKE_PREFIX_PATH="$PWD/prefix"
+          cmake --build package
+          ctest --test-dir package --output-on-failure
+
+  linux:
+    name: Linux ${{ matrix.arch }} ${{ matrix.config.name }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Release uses an installed libobjc2 (find_package), the sanitized
+          # builds the one built in the submodule.
+          - { arch: x86_64, runner: ubuntu-24.04, config: { name: Release, libobjc2: installed, flags: -DCMAKE_BUILD_TYPE=Release } }
+          - { arch: x86_64, runner: ubuntu-24.04, config: { name: ASan+UBSan, libobjc2: bundled, flags: -DCMAKE_BUILD_TYPE=Debug -DBASE_SANITIZE=ON } }
+          - { arch: arm64, runner: ubuntu-24.04-arm, config: { name: Release, libobjc2: installed, flags: -DCMAKE_BUILD_TYPE=Release } }
+          - { arch: arm64, runner: ubuntu-24.04-arm, config: { name: ASan+UBSan, libobjc2: bundled, flags: -DCMAKE_BUILD_TYPE=Debug -DBASE_SANITIZE=ON } }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang lld ninja-build cmake
+          # otherwise libobjc2 downloads it
+          sudo apt-get install -y libtsl-robin-map-dev || true
+      - name: Build libobjc2
+        run: |
+          cmake -S 3rdparty/libobjc2 -B 3rdparty/libobjc2/build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release -DTESTS=OFF \
+            -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
+          cmake --build 3rdparty/libobjc2/build
+          if [ "${{ matrix.config.libobjc2 }}" = installed ]; then
+            cmake --install 3rdparty/libobjc2/build --prefix "$PWD/prefix"
+            # base must not fall back to the build tree
+            rm -rf 3rdparty/libobjc2/build
+          fi
+      - name: Configure
+        run: |
+          cmake -S . -B build -G Ninja -DBASE_WERROR=ON -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_PREFIX_PATH="$PWD/prefix" ${{ matrix.config.flags }}
+      - name: Build
+        run: cmake --build build
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+      - name: Install and use the package
+        if: matrix.config.libobjc2 == 'installed'
+        run: |
+          cmake --install build --prefix "$PWD/prefix"
+          cmake -S test/package -B package -G Ninja -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_PREFIX_PATH="$PWD/prefix"
+          cmake --build package
+          ctest --test-dir package --output-on-failure
+
+  windows:
+    name: Windows ${{ matrix.build-type }}
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        build-type: [Release, Debug]
+    env:
+      CLANG: C:/Program Files/LLVM/bin/clang.exe
+      CLANGXX: C:/Program Files/LLVM/bin/clang++.exe
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+      - name: Install dependencies
+        run: choco install ninja
+      - name: Build libobjc2
+        run: |
+          cmake -S 3rdparty/libobjc2 -B 3rdparty/libobjc2/build -G Ninja `
+            -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} -DTESTS=OFF `
+            "-DCMAKE_C_COMPILER=$env:CLANG" "-DCMAKE_CXX_COMPILER=$env:CLANGXX"
+          cmake --build 3rdparty/libobjc2/build
+      - name: Configure
+        run: |
+          cmake -S . -B build -G Ninja -DBASE_WERROR=ON `
+            -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} "-DCMAKE_C_COMPILER=$env:CLANG"
+      - name: Build
+        run: cmake --build build
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+  # A single check to require in the branch protection rules.
+  all-checks:
+    if: always()
+    needs: [macos, linux, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the results
+        run: |
+          [ "${{ needs.macos.result }}" = success ] &&
+          [ "${{ needs.linux.result }}" = success ] &&
+          [ "${{ needs.windows.result }}" = success ]

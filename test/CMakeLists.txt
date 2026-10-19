@@ -31,7 +31,8 @@ add_executable(base_tests
     ${TEST_SRC_DIR}/unit/test_system.m
 )
 target_link_libraries(base_tests PRIVATE base)
-target_compile_options(base_tests PRIVATE -fno-objc-arc -Wall)
+target_compile_options(base_tests PRIVATE -fno-objc-arc -Wall
+    $<$<BOOL:${BASE_WERROR}>:-Werror>)
 set_target_properties(base_tests PROPERTIES C_STANDARD 11)
 add_test(NAME base_tests
     COMMAND base_tests

@@ -1,0 +1,10 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+if(NOT APPLE)
+    # libobjc2 exports its library as the `objc` target.
+    find_dependency(libobjc @BASE_OBJC2_MIN_VERSION@)
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/baseTargets.cmake")
+check_required_components(base)
