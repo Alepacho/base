@@ -63,6 +63,8 @@ endif()
 
 if(WIN32)
     foreach(target playground base_tests)
+        # The tests use plain stdio (fopen...), deprecated by the Windows CRT.
+        target_compile_definitions(${target} PRIVATE _CRT_SECURE_NO_WARNINGS)
         add_custom_command(TARGET ${target} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
             $<TARGET_RUNTIME_DLLS:${target}>

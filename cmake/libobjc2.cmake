@@ -61,6 +61,9 @@ if(TARGET objc)
     return()
 endif()
 
+# The exported `objc` target links Threads::Threads, but libobjcConfig.cmake
+# does not look for it (libobjc2 2.3): it has to exist beforehand.
+find_package(Threads REQUIRED)
 find_package(libobjc ${BASE_OBJC2_MIN_VERSION} CONFIG QUIET)
 if(libobjc_FOUND AND TARGET objc)
     message(STATUS "base: using libobjc2 ${libobjc_VERSION} from ${libobjc_DIR}")

@@ -78,7 +78,10 @@ static BOOL baseIsObjectType(const char* type) {
 						   count - 2];
 	}
 
-	const IMP imp = method_getImplementation(method);
+	// Through `void (*)(void)`: IMP is variadic with libobjc2, and casting it
+	// straight to another function type is a warning.
+	typedef void (*BaseFunction)(void);
+	const BaseFunction imp = (BaseFunction)method_getImplementation(method);
 	if (returnsVoid) {
 		if (count == 2) {
 			((BaseVoidMsg0)imp)(object, selector);

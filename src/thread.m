@@ -38,6 +38,8 @@
 
 #if OS_WINDOWS
 #include <windows.h>
+// The Windows headers `#define interface struct`, which breaks `@interface`.
+#undef interface
 #else
 #include <errno.h>
 #include <pthread.h>

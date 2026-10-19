@@ -23,6 +23,19 @@ typedef __int64 base_file_offset;
 typedef off_t base_file_offset;
 #endif
 
+// Text of an errno value. strerror() is deprecated by the Windows CRT.
+static const char* baseErrorText(int err, char* buf, size_t size) {
+	if (err == 0) return "unknown error";
+#if OS_WINDOWS
+	if (strerror_s(buf, size, err) != 0) return "unknown error";
+	return buf;
+#else
+	(void)buf;
+	(void)size;
+	return strerror(err);
+#endif
+}
+
 static FILE* baseFileOpen(const char* name, const char* mode, int* err) {
 	FILE* f = nil;
 #if OS_WINDOWS
@@ -82,11 +95,12 @@ static const char* baseFileModeString(BaseFileMode mode) {
 
 - (void)throwError:(const char*)what {
 	const int err = errno; // before anything else can overwrite it
+	char text[256];
 	@throw [[Exception alloc]
 		initWithFormat:"Failed to %s '%s' file: %s",
 					   what,
 					   [path buffer],
-					   err ? strerror(err) : "unknown error"];
+					   baseErrorText(err, text, sizeof(text))];
 }
 
 - (void)open {
@@ -100,11 +114,12 @@ static const char* baseFileModeString(BaseFileMode mode) {
 	int err = 0;
 	file = baseFileOpen([path buffer], m, &err);
 	if (file == nil) {
+		char text[256];
 		@throw [[Exception alloc]
 			initWithFormat:"Failed to open '%s' file with '%s' mode: %s",
 						   [path buffer],
 						   m,
-						   strerror(err)];
+						   baseErrorText(err, text, sizeof(text))];
 	}
 
 	if (mode & BASE_FILE_AT_END) [self seekEnd];

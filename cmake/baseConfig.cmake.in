@@ -2,7 +2,9 @@
 
 include(CMakeFindDependencyMacro)
 if(NOT APPLE)
-    # libobjc2 exports its library as the `objc` target.
+    # libobjc2 exports its library as the `objc` target, which links
+    # Threads::Threads without looking for it (libobjc2 2.3).
+    find_dependency(Threads)
     find_dependency(libobjc @BASE_OBJC2_MIN_VERSION@)
 endif()
 
