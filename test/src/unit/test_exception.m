@@ -49,12 +49,21 @@ static void testThrow(void) {
 	Exception* thrown = [[Exception alloc] initWithFormat:"thrown"];
 	Exception* caught = nil;
 	BOOL finally = NO;
-	@try {
-		@throw thrown;
-	} @catch (Exception* ex) {
-		caught = ex;
-	} @finally {
-		finally = YES;
+	// NOTE: clang 22 (windows-msvc, gnustep-2.0) workarounds:
+	// - a single @try with both @catch and @finally crashes the compiler, so
+	//   the @finally wraps an inner @try/@catch;
+	// - @finally is emitted as a cleanup of the enclosing scope (it only runs
+	//   when that scope exits), so each @try/@finally gets its own { } block.
+	{
+		@try {
+			@try {
+				@throw thrown;
+			} @catch (Exception* ex) {
+				caught = ex;
+			}
+		} @finally {
+			finally = YES;
+		}
 	}
 	CHECK(caught == thrown);
 	CHECK(finally);
@@ -62,9 +71,11 @@ static void testThrow(void) {
 
 	// @finally also runs without an exception
 	finally = NO;
-	@try {
-	} @finally {
-		finally = YES;
+	{
+		@try {
+		} @finally {
+			finally = YES;
+		}
 	}
 	CHECK(finally);
 
@@ -97,9 +108,11 @@ static void testThrow(void) {
 	finally = NO;
 	@try {
 		@try {
-			@throw [[Exception alloc] initWithFormat:"inner"];
-		} @catch (Exception* ex) {
-			@throw;
+			@try {
+				@throw [[Exception alloc] initWithFormat:"inner"];
+			} @catch (Exception* ex) {
+				@throw;
+			}
 		} @finally {
 			finally = YES;
 		}
