@@ -25,7 +25,6 @@
 //     distribution.
 
 // TODO: implement TSS?
-// TODO: implement Mutex?
 
 #include "base/thread.h"
 #include "base/array.h"
@@ -39,6 +38,7 @@
 #if OS_WINDOWS
 #include <windows.h>
 #else
+#include <errno.h>
 #include <pthread.h>
 #include <sched.h>
 #endif // OS_WINDOWS
@@ -227,6 +227,136 @@ static void* baseThreadFunction(void* params)
 	Sleep(0);
 #else
 	sched_yield();
+#endif // OS_WINDOWS
+}
+
+@end
+
+#if OS_WINDOWS
+// Critical sections are always recursive, `alreadyLocked` makes a plain
+// mutex behave like one.
+typedef struct {
+	CRITICAL_SECTION cs;
+	BOOL alreadyLocked;
+} BaseMutex;
+#else
+typedef pthread_mutex_t BaseMutex;
+#endif // OS_WINDOWS
+
+@implementation Mutex
+
+- (id)init {
+	return [self initRecursive:NO];
+}
+
+- (id)initRecursive:(BOOL)isRecursive {
+	self = [super init];
+	if (self) {
+		recursive = isRecursive;
+		handle = nil;
+
+		BaseMutex* m = calloc(1, sizeof(BaseMutex));
+		if (m == nil) {
+			[self release];
+			@throw [[Exception alloc]
+				initWithFormat:"Failed to create mutex. %s", "Out of memory."];
+		}
+
+#if OS_WINDOWS
+		InitializeCriticalSection(&m->cs);
+		m->alreadyLocked = NO;
+		const int error = 0;
+#else
+		pthread_mutexattr_t attr;
+		int error = pthread_mutexattr_init(&attr);
+		if (error == 0) {
+			if (recursive)
+				error =
+					pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+			if (error == 0) error = pthread_mutex_init(m, &attr);
+			pthread_mutexattr_destroy(&attr);
+		}
+#endif // OS_WINDOWS
+
+		if (error != 0) {
+			free(m);
+			[self release];
+			@throw [[Exception alloc]
+				initWithFormat:"Failed to create mutex. Error code: %i", error];
+		}
+
+		handle = m;
+	}
+	return self;
+}
+
+- (void)dealloc {
+	BaseMutex* m = handle;
+	if (m) {
+#if OS_WINDOWS
+		DeleteCriticalSection(&m->cs);
+#else
+		pthread_mutex_destroy(m);
+#endif // OS_WINDOWS
+		free(m);
+	}
+	[super dealloc];
+}
+
+- (BOOL)isRecursive {
+	return recursive;
+}
+
+- (void)lock {
+	BaseMutex* m = handle;
+#if OS_WINDOWS
+	EnterCriticalSection(&m->cs);
+	if (!recursive) {
+		// Locked again by the owner: deadlock, as pthreads would.
+		while (m->alreadyLocked)
+			Sleep(1000);
+		m->alreadyLocked = YES;
+	}
+#else
+	const int error = pthread_mutex_lock(m);
+	if (error != 0)
+		@throw [[Exception alloc]
+			initWithFormat:"Failed to lock mutex. Error code: %i", error];
+#endif // OS_WINDOWS
+}
+
+- (BOOL)tryLock {
+	BaseMutex* m = handle;
+#if OS_WINDOWS
+	if (!TryEnterCriticalSection(&m->cs)) return NO;
+	if (!recursive) {
+		if (m->alreadyLocked) {
+			LeaveCriticalSection(&m->cs);
+			return NO;
+		}
+		m->alreadyLocked = YES;
+	}
+	return YES;
+#else
+	const int error = pthread_mutex_trylock(m);
+	if (error == EBUSY) return NO;
+	if (error != 0)
+		@throw [[Exception alloc]
+			initWithFormat:"Failed to lock mutex. Error code: %i", error];
+	return YES;
+#endif // OS_WINDOWS
+}
+
+- (void)unlock {
+	BaseMutex* m = handle;
+#if OS_WINDOWS
+	m->alreadyLocked = NO;
+	LeaveCriticalSection(&m->cs);
+#else
+	const int error = pthread_mutex_unlock(m);
+	if (error != 0)
+		@throw [[Exception alloc]
+			initWithFormat:"Failed to unlock mutex. Error code: %i", error];
 #endif // OS_WINDOWS
 }
 

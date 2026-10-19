@@ -53,4 +53,29 @@
 
 @end
 
+// Mutual exclusion lock.
+//
+// A plain mutex must be unlocked by the thread that locked it, and locking it
+// again from that thread deadlocks. A recursive one may be locked several
+// times by the same thread and must then be unlocked as many times.
+// Destroying a locked mutex is undefined.
+@interface Mutex : BaseObject {
+	void* handle;
+	BOOL recursive;
+}
+
+- (id)init;
+- (id)initRecursive:(BOOL)isRecursive;
+- (void)dealloc;
+
+- (BOOL)isRecursive;
+
+- (void)lock;
+// Returns NO, without waiting, if another thread holds the lock
+// (or the calling thread does, for a plain mutex).
+- (BOOL)tryLock;
+- (void)unlock;
+
+@end
+
 #endif // BASE_THREAD_H

@@ -222,10 +222,104 @@ static void testConcurrency(void) {
 	[w release];
 }
 
+// Protects a plain (non-atomic) counter with a Mutex.
+@interface Locker : BaseObject {
+	Mutex* mutex;
+	int counter;
+}
+- (id)initWithMutex:(Mutex*)m;
+- (id)add:(Array*)args;
+- (id)tryLock:(Array*)args;
+- (int)counter;
+@end
+
+@implementation Locker
+- (id)initWithMutex:(Mutex*)m {
+	self = [super init];
+	if (self) {
+		mutex = m;
+		counter = 0;
+	}
+	return self;
+}
+- (id)add:(Array*)args {
+	for (int i = 0; i < 10000; i++) {
+		[mutex lock];
+		counter++;
+		[mutex unlock];
+	}
+	return nil;
+}
+- (id)tryLock:(Array*)args {
+	if (![mutex tryLock]) return nil;
+	[mutex unlock];
+	return [[Number alloc] initValue:1];
+}
+- (int)counter {
+	return counter;
+}
+@end
+
+// Result of [Locker tryLock:] called from another thread.
+static BOOL tryLockElsewhere(Locker* l) {
+	Thread* t = [Thread new];
+	[t create:[[Selector new] setObject:l setSelector:@selector(tryLock:)]];
+	[t join];
+	Number* r = [t result];
+	[t release];
+	if (r == nil) return NO;
+	[r release];
+	return YES;
+}
+
+static void testMutex(void) {
+	// plain
+	Mutex* m = [Mutex new];
+	Locker* l = [[Locker alloc] initWithMutex:m];
+	CHECK(![m isRecursive]);
+	CHECK([m tryLock]);
+	CHECK(![m tryLock]); // not even by the owner
+	CHECK(!tryLockElsewhere(l));
+	[m unlock];
+	CHECK(tryLockElsewhere(l));
+	[m lock];
+	CHECK(!tryLockElsewhere(l));
+	[m unlock];
+
+	// contention
+	Array<Thread*>* threads = [Array new];
+	for (int i = 0; i < 8; i++) {
+		Thread* th = [Thread new];
+		[th create:[[Selector new] setObject:l setSelector:@selector(add:)]];
+		[threads push:th];
+	}
+	[threads release];
+	CHECK([l counter] == 80000);
+	[l release];
+	[m release];
+
+	// recursive
+	m = [[Mutex alloc] initRecursive:YES];
+	l = [[Locker alloc] initWithMutex:m];
+	CHECK([m isRecursive]);
+	[m lock];
+	CHECK([m tryLock]);
+	[m lock];
+	CHECK(!tryLockElsewhere(l));
+	[m unlock];
+	[m unlock];
+	CHECK(!tryLockElsewhere(l)); // still held once
+	[m unlock];
+	CHECK(tryLockElsewhere(l));
+	[l release];
+	[m release];
+}
+
 void testThread(void) {
 	testIdle();
 	testRunning();
 	testJoin();
 	testDetach();
 	testConcurrency();
+	testMutex();
 }
