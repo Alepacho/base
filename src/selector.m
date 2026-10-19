@@ -1,7 +1,35 @@
 #include "base/selector.h"
 #include "base/exception.h"
 
+typedef id (*BaseMsg0)(id, SEL);
+typedef id (*BaseMsg1)(id, SEL, id);
+
 @implementation Selector
+
+// @private
+
+// Throws when `object` does not implement `selector`.
+// class_getMethodImplementation() never returns NULL (it falls back to the
+// forwarding IMP), so the check has to be done explicitly.
++ (IMP)checkedMethod:(SEL)selector object:(id)object {
+	if (object == nil || selector == nil)
+		@throw [[Exception alloc]
+			initWithFormat:"Unable to perform selector '%s' on %s",
+						   selector ? sel_getName(selector) : "(null)",
+						   object ? "object" : "nil object"];
+
+	Class cls = object_getClass(object);
+	if (!class_respondsToSelector(cls, selector))
+		@throw [[Exception alloc]
+			initWithFormat:"%s '%s' does not respond to selector '%s'",
+						   class_isMetaClass(cls) ? "Class" : "Instance of",
+						   class_getName(cls),
+						   sel_getName(selector)];
+
+	return class_getMethodImplementation(cls, selector);
+}
+
+// @public
 
 - (id)init {
 	self = [super init];
@@ -63,7 +91,9 @@
 }
 
 + (IMP)method:(SEL)selector object:(id)object {
-	return class_getMethodImplementation([object class], selector);
+	// object_getClass() returns the metaclass for class objects,
+	// so class methods are found too.
+	return class_getMethodImplementation(object_getClass(object), selector);
 }
 
 - (id)result {
@@ -79,30 +109,13 @@
 }
 
 + (id)perform:(SEL)selector object:(id)object {
-	const IMP msg = [self method:selector object:object];
-
-	if (!msg)
-		@throw [[Exception alloc]
-			initWithFormat:"Invalid selector passed to %s", sel_getName(_cmd)];
-#if OS_MACOS
-	return [object performSelector:selector];
-#else
-	return (*msg)(object, selector);
-#endif // OS_MACOS
+	const IMP msg = [self checkedMethod:selector object:object];
+	return ((BaseMsg0)msg)(object, selector);
 }
 
 + (id)perform:(SEL)selector object:(id)object argument:(id)argument {
-	const IMP msg = [self method:selector object:object];
-
-	if (!msg)
-		@throw [[Exception alloc]
-			initWithFormat:"Invalid selector passed to %s", sel_getName(_cmd)];
-
-#if OS_MACOS
-	return [object performSelector:selector withObject:argument];
-#else
-	return (*msg)(object, selector, argument);
-#endif // OS_MACOS
+	const IMP msg = [self checkedMethod:selector object:object];
+	return ((BaseMsg1)msg)(object, selector, argument);
 }
 
 - (id)performWithArgs:(Array*)arguments {

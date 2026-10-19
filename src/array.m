@@ -1,9 +1,7 @@
 #include "base/array.h"
 #include "base/exception.h"
-#include "base/string.h"
 #include "base/system.h"
 
-#include <objc/runtime.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -12,34 +10,33 @@
 // @private
 
 - (void)resize:(Size)newSize {
-	self->size = newSize + 1;
-	self->data = realloc(self->data, self->size * sizeof(id));
+	if (newSize == 0) {
+		free(self->data);
+		self->data = nil;
+		self->size = 0;
+		return;
+	}
+
+	id* newData = realloc(self->data, newSize * sizeof(id));
+	if (newData == nil) {
+		[System fatal:"Unable to allocate memory for %llu array elements!",
+					  newSize];
+	}
+	self->data = newData;
+	self->size = newSize;
 }
 
-- (void)sortPartition:(_BaseSortFn)func first:(int)f last:(int)l {
-	int i, j, p;
+- (void)reserveOne {
+	if (self->used < self->size) return;
+	[self resize:(self->size < 4) ? 4 : self->size * 2];
+}
 
-	if (f < l) {
-		p = f;
-		i = f;
-		j = l;
-		while (i < j) {
-			while (!func(data[i], data[p]) && i < l)
-				i++;
-
-			while (func(data[j], data[p]))
-				j--;
-
-			if (i < j) {
-				[self swap:i to:j];
-			}
-		}
-
-		[self swap:p to:j];
-
-		[self sortPartition:func first:f last:j - 1];
-		[self sortPartition:func first:j + 1 last:l];
-	}
+- (void)checkIndex:(Size)index {
+	if (index >= self->used)
+		@throw [[Exception alloc]
+			initWithFormat:"Wrong array index '%llu' (while count is %llu)!",
+						   index,
+						   self->used];
 }
 
 // @public
@@ -57,14 +54,14 @@
 
 - (id)initWithSize:(Size)newSize {
 	self = [self init];
-	[self resize:newSize];
+	if (self) {
+		[self resize:newSize];
+	}
 	return self;
 }
 
 - (void)dealloc {
-	if (self->used != 0 && self->data != nil) {
-		[self clear];
-	}
+	[self clear];
 
 	[super dealloc];
 }
@@ -78,28 +75,17 @@
 }
 
 - (void)clear {
-	for (Size i = 0; i < [self count]; i++) {
-		[self pop];
-	}
-
-	self->size = self->used = 0;
-	if (self->data != nil) {
-		free(self->data);
-		self->data = nil;
-	}
+	[self clear:YES];
 }
 
-- (void)clear:(BOOL)withDealloc {
-	if (withDealloc) {
-		for (size_t i = 0; i < [self count]; i++) {
+- (void)clear:(BOOL)withRelease {
+	if (withRelease) {
+		while (self->used > 0) {
 			[self pop];
 		}
 	}
-	self->size = self->used = 0;
-	if (self->data != nil) {
-		free(self->data);
-		self->data = nil;
-	}
+	self->used = 0;
+	[self resize:0];
 }
 
 - (id)push:(id)value {
@@ -107,78 +93,31 @@
 		@throw
 			[[Exception alloc] initWithFormat:"Pushed element in array is NIL"];
 
-	if (self->used >= self->size) {
-		[self resize:self->size * 2];
-	}
-	// printf("used: %zu\n", used);
-	// printf("size: %zu\n", size);
-	id result = self->data[self->used] = value; //[value retain];
-	self->used++;
-	return result;
+	[self reserveOne];
+	self->data[self->used++] = value;
+	return value;
 }
 
 - (void)pop {
 	if (self->used == 0) return;
 
-	Size _at = --self->used;
-	id _data = self->data[_at];
-
-	if (_data == nil)
-		@throw [[Exception alloc]
-			initWithFormat:"Popped element in array is NIL (at %i)", _at];
-
-	if (_data == NULL) {
-		@throw [[Exception alloc]
-			initWithFormat:"Popped element in array is NULL (at %i)", _at];
-	}
-
-	[_data dealloc];
-	_data = nil;
+	id value = self->data[--self->used];
+	self->data[self->used] = nil;
+	[value release];
 }
 
 - (id)getFirst {
-	@try {
-		if ([self count] == 0)
-			@throw [[Exception alloc]
-				initWithFormat:"Unable to get first array element: %s!",
-							   "Array is empty"];
-	} @catch (Exception* ex) {
-		[System error:"%s\n", [ex message]];
-		[ex release];
-		return nil;
-	}
-
+	if (self->used == 0) return nil;
 	return self->data[0];
 }
 
 - (id)getLast {
-	@try {
-		if ([self count] == 0)
-			@throw [[Exception alloc]
-				initWithFormat:"Unable to get first array element: %s!",
-							   "Array is empty"];
-	} @catch (Exception* ex) {
-		[System error:"%s\n", [ex message]];
-		[ex release];
-		return nil;
-	}
-
-	return self->data[[self count] - 1];
+	if (self->used == 0) return nil;
+	return self->data[self->used - 1];
 }
 
 // ! quite useless method
 // - (id)getByObject:(id)object {
-// 	@try {
-// 		if (object == nil)
-// 			@throw [[Exception alloc]
-// 				initWithFormat:"Unable to get array element: %s!",
-// 							   "Object is nil"];
-// 	} @catch (Exception* ex) {
-// 		[System error:"%s\n", [ex message]];
-// 		[ex release];
-// 		return nil;
-// 	}
-
 // 	for (Size i = 0; i < [self count]; i++) {
 // 		if (self->data[i] == object) return self->data[i];
 // 	}
@@ -186,36 +125,17 @@
 // }
 
 - (Size)getIndexByObject:(id)object {
-	@try {
-		if (object == nil)
-			@throw [[Exception alloc]
-				initWithFormat:"Unable to get method argument: %s!",
-							   "Object is nil"];
-	} @catch (Exception* ex) {
-		[System error:"%s\n", [ex message]];
-		[ex release];
-		return -1;
-	}
-	for (Size i = 0; i < [self count]; i++) {
+	if (object == nil) return BASE_NOT_FOUND;
+
+	for (Size i = 0; i < self->used; i++) {
 		if (self->data[i] == object) return i;
 	}
 
-	return -1;
+	return BASE_NOT_FOUND;
 }
 
 - (id)getByIndex:(Size)index {
-	@try {
-		if (index >= self->used)
-			@throw [[Exception alloc]
-				initWithFormat:"Wrong array index '%zu' (while max is %zu)!",
-							   index,
-							   self->used];
-	} @catch (Exception* ex) {
-		[System error:"%s\n", [ex message]];
-		[ex release];
-		return nil;
-	}
-
+	[self checkIndex:index];
 	return self->data[index];
 }
 
@@ -224,83 +144,86 @@
 }
 
 - (void)insert:(id)value byIndex:(Size)index {
-	@try {
-		if (index >= self->used)
-			@throw [[Exception alloc]
-				initWithFormat:"Wrong array index '%zu' (while max is %zu)!",
-							   index,
-							   self->used];
-	} @catch (Exception* ex) {
-		[System error:"%s\n", [ex message]];
-		[ex release];
-		return;
-	}
+	if (value == nil)
+		@throw [[Exception alloc]
+			initWithFormat:"Inserted element in array is NIL"];
+	if (index > self->used)
+		@throw [[Exception alloc]
+			initWithFormat:"Wrong array index '%llu' (while count is %llu)!",
+						   index,
+						   self->used];
 
-	Size newSize = self->used + 1;
-	if (newSize >= self->size) newSize *= 2;
-
-	id* newData = malloc((newSize) * sizeof(id));
-	memcpy(newData, self->data, index * sizeof(id));
-	newData[index] = value;
-	memmove(newData + index + 1,
+	[self reserveOne];
+	memmove(self->data + index + 1,
 			self->data + index,
 			(self->used - index) * sizeof(id));
-	free(self->data);
+	self->data[index] = value;
 	self->used++;
-	self->size = newSize;
-	self->data = newData;
 }
 
 - (void)remove {
-	[self remove:0 withDealloc:YES];
+	[self remove:0 withRelease:YES];
 }
 
 - (void)remove:(Size)index {
-	[self remove:index withDealloc:YES];
+	[self remove:index withRelease:YES];
 }
 
-- (void)remove:(Size)index withDealloc:(BOOL)flag {
-	@try {
-		if (index >= self->used)
-			@throw [[Exception alloc]
-				initWithFormat:"Wrong array index '%zu' (while max is %zu)!",
-							   index,
-							   self->used];
-		if (self->used == 0)
-			@throw [[Exception alloc]
-				initWithFormat:"Unable to remove array element: %s!",
-							   "Array is empty"];
-	} @catch (Exception* ex) {
-		[System error:"%s\n", [ex message]];
-		[ex release];
-		return;
-	}
+- (void)remove:(Size)index withRelease:(BOOL)flag {
+	[self checkIndex:index];
 
-	if (flag) {
-		[self->data[index] dealloc];
-		self->data[index] = nil;
-	}
-
-	id* newData = malloc((self->size) * sizeof(id));
-	memcpy(newData, self->data, index * sizeof(id));
-
-	memmove(newData + index,
+	id value = self->data[index];
+	memmove(self->data + index,
 			self->data + index + 1,
 			(self->used - index - 1) * sizeof(id));
-	free(self->data);
-	self->used--;
-	self->data = newData;
+	self->data[--self->used] = nil;
+
+	if (flag) [value release];
 }
 
 - (void)swap:(Size)a to:(Size)b {
-	// TODO: add bounds check
+	[self checkIndex:a];
+	[self checkIndex:b];
+
 	id t = self->data[a];
 	self->data[a] = self->data[b];
 	self->data[b] = t;
 }
 
 - (id)sort:(_BaseSortFn)func {
-	[self sortPartition:func first:0 last:[self count] - 1];
+	const Size n = self->used;
+	if (n < 2) return self;
+
+	// Bottom-up merge sort: stable, O(n log n), no recursion and it never
+	// reads out of bounds even with a non-strict comparator.
+	id* tmp = malloc(n * sizeof(id));
+	if (tmp == nil) {
+		[System fatal:"Unable to allocate memory to sort %llu elements!", n];
+	}
+
+	id* src = self->data;
+	id* dst = tmp;
+	for (Size width = 1; width < n; width *= 2) {
+		for (Size lo = 0; lo < n; lo += 2 * width) {
+			const Size mid = (lo + width < n) ? lo + width : n;
+			const Size hi = (lo + 2 * width < n) ? lo + 2 * width : n;
+			Size i = lo, j = mid, k = lo;
+			while (i < mid && j < hi) {
+				// take from the right only when strictly needed to stay stable
+				dst[k++] = func(src[i], src[j]) ? src[j++] : src[i++];
+			}
+			while (i < mid)
+				dst[k++] = src[i++];
+			while (j < hi)
+				dst[k++] = src[j++];
+		}
+		id* t = src;
+		src = dst;
+		dst = t;
+	}
+
+	if (src != self->data) memcpy(self->data, src, n * sizeof(id));
+	free(tmp);
 	return self;
 }
 

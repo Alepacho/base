@@ -20,13 +20,13 @@
 		[file open:BASE_FILE_READ withBuffer:"./test.txt"];
 	} @catch (Exception* ex) {
 		[System warning:"%s\n%s", [ex message], "Test skip."];
-		// [ex dealloc];
 		exx = ex;
 	}
 
 	if (![file isOpen]) {
 		[System debug:"Exception is nil: %s", (exx == nil) ? "YES" : "NO"];
-		[file dealloc];
+		[exx release];
+		[file release];
 		return;
 	}
 	String* result = [String new];
@@ -35,8 +35,8 @@
 
 	[System debug:"result: '%s'", [result buffer]];
 
-	[result dealloc];
-	[file dealloc];
+	[result release];
+	[file release];
 	[System debug:"File test end"];
 }
 

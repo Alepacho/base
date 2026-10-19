@@ -1,72 +1,94 @@
 cmake_minimum_required(VERSION 3.27)
 
-set(LIBRARY_NAME "base")
-project(${LIBRARY_NAME})
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib")
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib")
+# Objective-C sources are compiled by the C compiler (clang picks the
+# language from the .m extension), so only C has to be enabled.
+project(base LANGUAGES C)
 
-set(CMAKE_C_STANDARD 11)
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wall -g -O0")
-set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O2")
+option(BASE_BUILD_TESTS "Build base tests and the playground" ${PROJECT_IS_TOP_LEVEL})
+option(BASE_SANITIZE "Build base with AddressSanitizer and UBSan" OFF)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-objc-arc")
-
-if(NOT APPLE)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fobjc-runtime=gnustep-2.0 -fuse-ld=lld")
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fblocks -fobjc-exceptions -fexceptions -fno-strict-aliasing")
-
-    # set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Xclang -fblocks -Xclang -fobjc-exceptions -Xclang -fexceptions -fno-strict-aliasing")
-    # set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DGNUSTEP -DGNUSTEP_BASE_LIBRARY=1 -DGNU_GUI_LIBRARY=1 -DGNU_RUNTIME=1 -DGNUSTEP_BASE_LIBRARY=1 -DGNUSTEP_WITH_DLL")
+if(PROJECT_IS_TOP_LEVEL)
+    set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 endif()
 
-set(OBJC2_DIR ${CMAKE_CURRENT_LIST_DIR}/3rdparty/libobjc2/)
-set(SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/src/)
-set(INC_DIR ${CMAKE_CURRENT_LIST_DIR}/include/)
+set(BASE_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
-link_directories(${CMAKE_SOURCE_DIR}/lib)
-
-set(SOURCES
-    ${SRC_DIR}base.m
-    ${SRC_DIR}system.m
-    ${SRC_DIR}array.m
-    ${SRC_DIR}string.m
-    ${SRC_DIR}exception.m
-    ${SRC_DIR}selector.m
-    ${SRC_DIR}file.m
-    ${SRC_DIR}thread.m
+add_library(base STATIC
+    ${BASE_SRC_DIR}/base.m
+    ${BASE_SRC_DIR}/system.m
+    ${BASE_SRC_DIR}/array.m
+    ${BASE_SRC_DIR}/string.m
+    ${BASE_SRC_DIR}/exception.m
+    ${BASE_SRC_DIR}/selector.m
+    ${BASE_SRC_DIR}/file.m
+    ${BASE_SRC_DIR}/thread.m
 )
 
-add_library(${LIBRARY_NAME} STATIC ${SOURCES})
+set_target_properties(base PROPERTIES C_STANDARD 11)
 
-if(NOT APPLE)
-    # Copy objc2 library
-    add_custom_command(TARGET ${LIBRARY_NAME} PRE_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${OBJC2_DIR}build/objc.lib"
-        $<TARGET_FILE_DIR:${LIBRARY_NAME}>)
+target_include_directories(base
+    PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
 
+target_compile_options(base
+    PRIVATE
+    -fno-objc-arc
+    -Wall
+    $<$<CONFIG:Debug>:-O0 -g>
+)
+
+if(BASE_SANITIZE)
+    target_compile_options(base PUBLIC -fsanitize=address,undefined -fno-omit-frame-pointer)
+    target_link_options(base PUBLIC -fsanitize=address,undefined)
+endif()
+
+if(APPLE)
+    # NSObject lives in the system libobjc.
+    target_link_libraries(base PUBLIC objc)
+else()
+    # libobjc2 has to be built first, see README.md
+    set(BASE_OBJC2_DIR "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/libobjc2"
+        CACHE PATH "libobjc2 source directory")
+    set(BASE_OBJC2_BUILD_DIR "${BASE_OBJC2_DIR}/build"
+        CACHE PATH "libobjc2 build directory")
+
+    add_library(base_objc2 SHARED IMPORTED)
     if(WIN32)
-        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${OBJC2_DIR}build/objc.dll"
-            $<TARGET_FILE_DIR:${PROJECT_NAME}>)
+        set_target_properties(base_objc2 PROPERTIES
+            IMPORTED_IMPLIB "${BASE_OBJC2_BUILD_DIR}/objc.lib"
+            IMPORTED_LOCATION "${BASE_OBJC2_BUILD_DIR}/objc.dll")
     else()
-        message(FATAL_ERROR "UNIX support is not implemented yet.")
+        set_target_properties(base_objc2 PROPERTIES
+            IMPORTED_LOCATION "${BASE_OBJC2_BUILD_DIR}/libobjc.so")
     endif()
 
-    # Copy objc2 headers
-    file(COPY "${OBJC2_DIR}objc/" DESTINATION ${INC_DIR}/objc)
+    # Only the public `objc/` headers: the libobjc2 source root also has
+    # files like `selector.h` or `unwind.h` that would shadow other headers.
+    set(BASE_OBJC2_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/objc2-include")
+    file(COPY "${BASE_OBJC2_DIR}/objc" DESTINATION "${BASE_OBJC2_INCLUDE_DIR}")
+    # libobjc2 >= 2.2 generates objc-config.h in its build directory.
+    if(EXISTS "${BASE_OBJC2_BUILD_DIR}/objc/objc-config.h")
+        file(COPY "${BASE_OBJC2_BUILD_DIR}/objc/objc-config.h"
+            DESTINATION "${BASE_OBJC2_INCLUDE_DIR}/objc")
+    endif()
+    set_target_properties(base_objc2 PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES "${BASE_OBJC2_INCLUDE_DIR}")
+
+    # Everything that includes base headers needs the same runtime flags.
+    target_compile_options(base
+        PUBLIC
+        -fobjc-runtime=gnustep-2.0
+        -fblocks
+        -fobjc-exceptions
+        -fexceptions
+        -fno-strict-aliasing
+    )
+    target_link_options(base PUBLIC -fuse-ld=lld)
+    target_link_libraries(base PUBLIC base_objc2)
 endif()
 
-target_include_directories(${LIBRARY_NAME}
-    PUBLIC
-    ${INC_DIR}
-)
-
-target_link_libraries(${LIBRARY_NAME}
-    PUBLIC
-    objc
-)
-
-add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/test)
+if(BASE_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(test)
+endif()

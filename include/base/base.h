@@ -3,21 +3,20 @@
 #ifndef BASE_MAIN_H
 #define BASE_MAIN_H
 
-#define OS_WINDOWS 0
-#define OS_MACOS   0
-#define OS_LINUX   0
-
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wmacro-redefined"
-
 #include "os.h"
 
-void _mainBase(void) __attribute__((constructor));
-
-#pragma clang diagnostic pop
+#if OS_MACOS
+// NSObject lives in libobjc itself, Foundation is not required.
+#include <objc/NSObject.h>
+#endif
 
 // https://github.com/gnustep/libs-base
 #include <objc/runtime.h>
+
+// Lets the compiler check printf-style arguments of variadic methods.
+// `f` is the index of the format argument, `a` of the first variadic one
+// (0 for methods that take a `va_list`).
+#define BASE_FORMAT(f, a) __attribute__((format(printf, f, a)))
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wobjc-root-class"
@@ -33,7 +32,7 @@ void _mainBase(void) __attribute__((constructor));
 __attribute__((objc_root_class))
 #endif // __has_attribute(objc_root_class)
 @interface BaseObject {
-	id isa;
+	Class isa;
 	int refcount;
 }
 #endif // OS_MACOS
@@ -47,6 +46,10 @@ __attribute__((objc_root_class))
 - (id)init;
 + (id)new;
 
+// Memory management follows the manual retain/release rules:
+// `alloc`/`new` give you one reference, `retain` adds one, `release` drops
+// one and destroys the object when the last one is gone.
+// Never call `dealloc` directly, use `release` instead.
 - (id)autorelease;
 - (id)retain;
 - (void)release;
@@ -74,6 +77,9 @@ __attribute__((objc_root_class))
 #endif
 
 typedef unsigned long long Size;
+
+// Returned by lookup methods when nothing was found.
+#define BASE_NOT_FOUND ((Size) - 1)
 
 @interface Number : BaseObject {
 	Size value;

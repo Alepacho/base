@@ -1,47 +1,42 @@
 #import "base/base.h"
+#import "base/exception.h"
 
-#if OS_MACOS
-
-#else
+#if !OS_MACOS
 #import <objc/objc-arc.h>
+#include <stdatomic.h>
 #endif
 
 #include <objc/objc-exception.h>
 #include <stdio.h>
+#include <stdlib.h>
 
-#if OS_MACOS
-
-#elif OS_WINDOWS
-#include <Windows.h>
-LONG WINAPI
-_baseUnhandledExceptionFilter(struct _EXCEPTION_POINTERS* exceptionInfo) {
-	printf("windows!\n");
-	exit(1);
-}
-#elif OS_LINUX
-#else
-#error "OS not supported"
-#endif
-
-static void _baseUncaughtExceptionHandler(id exception) {
-	printf("uncaught exception!\n");
-	exit(1);
+static BOOL baseIsKindOfClass(Class s, Class a) {
+	while (s != Nil) {
+		if (s == a) return YES;
+		s = class_getSuperclass(s);
+	}
+	return NO;
 }
 
-void _mainBase(void) {
-#if OS_WINDOWS
-	SetUnhandledExceptionFilter(&_baseUnhandledExceptionFilter);
-#endif
-	objc_setUncaughtExceptionHandler(_baseUncaughtExceptionHandler);
+static void baseUncaughtExceptionHandler(id exception) {
+	if (exception != nil
+		&& baseIsKindOfClass(object_getClass(exception), [Exception class])) {
+		fprintf(stderr,
+				"Uncaught exception: %s\n",
+				[(Exception*)exception message]);
+	} else {
+		fprintf(stderr,
+				"Uncaught exception of class '%s'\n",
+				exception ? class_getName(object_getClass(exception)) : "nil");
+	}
+	fflush(stderr);
+	// abort() instead of exit() so the debugger / crash reporter still sees it.
+	abort();
 }
 
-// BOOL baseIsKindOfClass(Class s, Class a) {
-// 	while (s != Nil) {
-// 		if (s == a) return YES;
-// 		s = class_getSuperclass(a);
-// 	}
-// 	return NO;
-// }
+__attribute__((constructor)) static void baseInit(void) {
+	objc_setUncaughtExceptionHandler(baseUncaughtExceptionHandler);
+}
 
 @implementation BaseObject
 
@@ -60,6 +55,14 @@ void _mainBase(void) {
 // - (id)copy {
 // 	return [self retain];
 // }
+
++ (BOOL)isMemberOfClass:(Class)aClass {
+	return (self == aClass) ? YES : NO;
+}
+
+- (BOOL)isMemberOfClass:(Class)aClass {
+	return ([self class] == aClass) ? YES : NO;
+}
 
 #if OS_MACOS
 
@@ -87,26 +90,6 @@ void _mainBase(void) {
 	[super release];
 }
 
-// + (BOOL)respondsToSelector:(SEL)selector {
-// 	return [super respondsToSelector:selector];
-// }
-
-// + (BOOL)instancesRespondToSelector:(SEL)selector {
-// 	return [super instancesRespondToSelector:selector];
-// }
-
-// - (BOOL)isKindOfClass:(Class)aClass {
-// 	return [super isKindOfClass:aClass];
-// }
-
-+ (BOOL)isMemberOfClass:(Class)aClass {
-	return [[super class] isMemberOfClass:aClass];
-}
-
-- (BOOL)isMemberOfClass:(Class)aClass {
-	return [super isMemberOfClass:aClass];
-}
-
 #else
 
 - (Class)class {
@@ -122,42 +105,27 @@ void _mainBase(void) {
 }
 
 - (id)autorelease {
+	// BaseObject implements its own retain/release, so libobjc2 can only
+	// keep it in its own (ARC) autorelease pool. That pool mode is switched on
+	// by the first objc_autoreleasePoolPush(); without it objc_autorelease()
+	// would send -autorelease back here and recurse forever.
+	static atomic_flag poolReady = ATOMIC_FLAG_INIT;
+	if (!atomic_flag_test_and_set(&poolReady)) {
+		objc_autoreleasePoolPop(objc_autoreleasePoolPush());
+	}
 	return objc_autorelease(self);
 }
+
 - (id)retain {
-	refcount++;
-	return self; // objc_retain(self);
+	__atomic_add_fetch(&refcount, 1, __ATOMIC_RELAXED);
+	return self;
 }
+
 - (void)release {
-	if (refcount == 0)
-		[self dealloc]; // objc_release(self);
-	else
-		refcount--;
-}
-
-// + (BOOL)respondsToSelector:(SEL)selector {
-// 	return class_respondsToSelector(object_getClass(self), selector);
-// }
-
-// + (BOOL)instancesRespondToSelector:(SEL)selector {
-// 	return class_respondsToSelector(self, selector);
-// }
-
-// + (BOOL)isKindOfClass:(Class)aClass {
-// 	return (aClass == [BaseObject class]) ? YES : NO;
-// }
-
-// - (BOOL)isKindOfClass:(Class)aClass {
-// 	Class class = object_getClass(self);
-// 	return baseIsKindOfClass(class, aClass);
-// }
-
-+ (BOOL)isMemberOfClass:(Class)aClass {
-	return (self == aClass) ? YES : NO;
-}
-
-- (BOOL)isMemberOfClass:(Class)aClass {
-	return ([self class] == aClass) ? YES : NO;
+	// refcount counts *extra* references, 0 means a single owner.
+	if (__atomic_fetch_sub(&refcount, 1, __ATOMIC_ACQ_REL) == 0) {
+		[self dealloc];
+	}
 }
 
 #endif

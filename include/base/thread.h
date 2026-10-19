@@ -9,31 +9,44 @@
 
 #define BaseAtomic _Atomic
 
-// typedef struct base_thread base_thread;
-
 @class Selector;
 @class Array;
 
+// Runs a Selector on a new thread, passing it the `args` array.
+//
+// Ownership: a successful `create:` takes over the selector and the arguments
+// and releases them once the thread has been joined (or has finished, if
+// detached). If `create:` throws, they still belong to the caller.
+// An unjoined, undetached thread is joined when the Thread is destroyed.
 @interface Thread : BaseObject {
-	void* data;
-	Array* args;
-	Selector* sel;
+	void* context;
+	id result;
 }
 
 - (id)init;
 - (void)dealloc;
 
+// Valid between `create:` and `join`/`detach`, nil otherwise.
 - (Array*)args;
 - (Selector*)selector;
-// - (void*)data;
+
+// Object returned by the selector, available after `join`.
+// It is not owned by the Thread.
+- (id)result;
 
 - (void)create:(Selector*)selector;
 - (void)create:(Selector*)selector args:(Array*)arguments;
 
+// Waits for the thread and returns its exit code: 0 when the selector
+// returned normally, or the value passed to `+exit:`.
 - (int)join;
+// Lets the thread run on its own. Returns NO if it was not running.
 - (BOOL)detach;
-- (void)exit:(int)result;
-- (void)yield;
+
+// These act on the *calling* thread.
+// Note: a detached thread that calls `exit:` leaks its selector and arguments.
++ (void)exit:(int)code __attribute__((noreturn));
++ (void)yield;
 
 // - (BOOL)equal:(Thread*)thread;
 // + (BOOL)equal:(Thread*)a and:(Thread*)b;

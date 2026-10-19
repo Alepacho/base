@@ -5,6 +5,15 @@
 
 #include "base.h"
 
+// Modes follow std::ios_base::openmode (BINARY may be added to any of them):
+//   READ                    "r"   file must exist
+//   WRITE, WRITE|TRUNCATE   "w"   create or truncate
+//   WRITE|APPEND, APPEND    "a"   create, write at the end
+//   READ|WRITE              "r+"  file must exist
+//   READ|WRITE|TRUNCATE     "w+"  create or truncate
+//   READ|APPEND (|WRITE)    "a+"  create, write at the end
+// AT_END seeks to the end right after opening.
+// Any other combination is rejected with an Exception.
 // clang-format off
 typedef enum {
     BASE_FILE_NONE     = 0x00,
@@ -19,11 +28,12 @@ typedef enum {
 
 @class String;
 
+// Every method except `isOpen`, `close` and `exist:` throws an Exception
+// on failure.
 @interface File : BaseObject {
 	void* file;
 	BaseFileMode mode;
 	String* path;
-	Size length;
 }
 
 - (id)init;
@@ -35,20 +45,28 @@ typedef enum {
 - (void)open:(BaseFileMode)fileMode withString:(String*)pathName;
 
 - (BOOL)isOpen;
-- (void)close;
+// Returns NO if pending data could not be written. The file is closed anyway.
+- (BOOL)close;
+// Current size of the file in bytes.
 - (Size)length;
+- (Size)position;
 
 - (void)seek:(Size)pos;
 - (void)seekStart;
 - (void)seekEnd;
 
-- (char*)readWithBuffer:(char*)buf;
-- (char*)readWithBuffer:(char*)buf size:(int)size;
+// Reads up to `size` bytes and returns how many were read (0 at the end of
+// the file). In text mode `buf` must hold `size + 1` bytes and is always
+// NUL-terminated; in binary mode nothing is appended.
+- (Size)readWithBuffer:(char*)buf size:(Size)size;
+// Reads everything from the current position up to the end of the file.
 - (void)readWithString:(String*)str;
-- (void)readWithString:(String*)str size:(int)size;
+// Reads up to `size` bytes.
+- (void)readWithString:(String*)str size:(Size)size;
 
-- (int)writeBuffer:(char*)buf;
-- (int)writeString:(String*)str;
+- (Size)write:(const void*)data size:(Size)size;
+- (Size)writeBuffer:(const char*)buf;
+- (Size)writeString:(String*)str;
 
 @end
 

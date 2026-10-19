@@ -1,5 +1,28 @@
-// COPYRIGHT NOTE: I'm using some parts of the tinycthread library.
+// COPYRIGHT NOTE: Parts of this file are based on the TinyCThread library.
 // https://github.com/tinycthread/tinycthread
+// They have been altered from the original. The original license follows.
+//
+// Copyright (c) 2012 Marcus Geelnard
+// Copyright (c) 2013-2016 Evan Nemerson
+//
+// This software is provided 'as-is', without any express or implied
+// warranty. In no event will the authors be held liable for any damages
+// arising from the use of this software.
+//
+// Permission is granted to anyone to use this software for any purpose,
+// including commercial applications, and to alter it and redistribute it
+// freely, subject to the following restrictions:
+//
+//     1. The origin of this software must not be misrepresented; you must not
+//     claim that you wrote the original software. If you use this software
+//     in a product, an acknowledgment in the product documentation would be
+//     appreciated but is not required.
+//
+//     2. Altered source versions must be plainly marked as such, and must not
+//     be misrepresented as being the original software.
+//
+//     3. This notice may not be removed or altered from any source
+//     distribution.
 
 // TODO: implement TSS?
 // TODO: implement Mutex?
@@ -8,17 +31,43 @@
 #include "base/array.h"
 #include "base/exception.h"
 #include "base/selector.h"
-#include "base/system.h"
 
 #include <stdatomic.h>
+#include <stdint.h>
+#include <stdlib.h>
 
 #if OS_WINDOWS
 #include <windows.h>
-#define base_thread HANDLE
 #else
 #include <pthread.h>
-#define base_thread pthread_t
+#include <sched.h>
 #endif // OS_WINDOWS
+
+enum {
+	BASE_THREAD_RUNNING,
+	BASE_THREAD_FINISHED,
+	BASE_THREAD_DETACHED,
+};
+
+// Shared between the Thread object and the running thread, so that a detached
+// thread does not depend on the Thread object staying alive.
+typedef struct {
+#if OS_WINDOWS
+	HANDLE handle;
+#else
+	pthread_t handle;
+#endif // OS_WINDOWS
+	Selector* sel;
+	Array* args;
+	id result;
+	atomic_int state;
+} BaseThreadContext;
+
+static void baseThreadContextFree(BaseThreadContext* ctx) {
+	[ctx->sel release];
+	[ctx->args release];
+	free(ctx);
+}
 
 #if OS_WINDOWS
 static DWORD WINAPI baseThreadFunction(LPVOID params)
@@ -26,8 +75,15 @@ static DWORD WINAPI baseThreadFunction(LPVOID params)
 static void* baseThreadFunction(void* params)
 #endif // OS_WINDOWS
 {
-	Thread* thread = (Thread*)params;
-	[[thread selector] performWithArgs:[thread args]];
+	BaseThreadContext* ctx = (BaseThreadContext*)params;
+	ctx->result = [ctx->sel performWithArgs:ctx->args];
+
+	// Whoever comes last (this thread or `detach`) frees the context.
+	// A joined context is freed by `join`.
+	if (atomic_exchange(&ctx->state, BASE_THREAD_FINISHED)
+		== BASE_THREAD_DETACHED) {
+		baseThreadContextFree(ctx);
+	}
 	return 0;
 }
 
@@ -36,9 +92,8 @@ static void* baseThreadFunction(void* params)
 - (id)init {
 	self = [super init];
 	if (self) {
-		data = nil;
-		args = nil;
-		sel = nil;
+		context = nil;
+		result = nil;
 	}
 	return self;
 }
@@ -49,97 +104,125 @@ static void* baseThreadFunction(void* params)
 }
 
 - (Array*)args {
-	return args;
+	return context ? ((BaseThreadContext*)context)->args : nil;
 }
 
 - (Selector*)selector {
-	return sel;
+	return context ? ((BaseThreadContext*)context)->sel : nil;
+}
+
+- (id)result {
+	return result;
 }
 
 - (void)create:(Selector*)selector {
-	[self create:selector args:[Array new]];
+	Array* args = [Array new];
+	@try {
+		[self create:selector args:args];
+	} @catch (id ex) {
+		[args release];
+		@throw;
+	}
 }
 
 - (void)create:(Selector*)selector args:(Array*)arguments {
-	if (data)
+	if (context)
 		@throw [[Exception alloc] initWithFormat:"Failed to create thread. %s",
 												 "Thread already created."];
-	self->args = arguments;
-	self->sel = selector;
+
+	BaseThreadContext* ctx = calloc(1, sizeof(BaseThreadContext));
+	if (ctx == nil)
+		@throw [[Exception alloc]
+			initWithFormat:"Failed to create thread. %s", "Out of memory."];
+	ctx->sel = selector;
+	ctx->args = arguments;
+	ctx->result = nil;
+	atomic_init(&ctx->state, BASE_THREAD_RUNNING);
+	result = nil;
 
 #if OS_WINDOWS
-	data = CreateThread(NULL, 0, baseThreadFunction, (LPVOID)self, 0, NULL);
+	ctx->handle = CreateThread(NULL, 0, baseThreadFunction, ctx, 0, NULL);
+	const int error = ctx->handle ? 0 : (int)GetLastError();
 #else
-	// data = malloc(sizeof(pthread_t));
-	pthread_t p = nil;
-	if (pthread_create(&p, NULL, baseThreadFunction, (void*)self) != 0) {
-		// free(data);
-		p = nil;
-	}
-	data = p;
+	const int error =
+		pthread_create(&ctx->handle, NULL, baseThreadFunction, ctx);
 #endif // OS_WINDOWS
 
-	if (data == nil)
-		@throw
-			[[Exception alloc] initWithFormat:"Failed to create thread. %i %s",
-											  "Thread ID is NULL."];
+	if (error != 0) {
+		// Ownership is only taken on success.
+		free(ctx);
+		@throw [[Exception alloc]
+			initWithFormat:"Failed to create thread. Error code: %i", error];
+	}
+
+	context = ctx;
 }
 
 - (int)join {
-	if (data == nil) return 0;
+	if (context == nil) return 0;
+	BaseThreadContext* ctx = context;
 
 #if OS_WINDOWS
-	if (WaitForSingleObject(data, INFINITE) == WAIT_FAILED)
+	if (WaitForSingleObject(ctx->handle, INFINITE) == WAIT_FAILED)
 		@throw [[Exception alloc]
-			initWithFormat:"Failed to join thread. %s",
+			initWithFormat:"Failed to join thread [%lu]. %s",
+						   GetLastError(),
 						   "Unable to wait until it's done."];
 
-	DWORD result;
-	BOOL code = GetExitCodeThread(data, &result);
-	if (!code)
+	DWORD code = 0;
+	if (!GetExitCodeThread(ctx->handle, &code))
+		@throw
+			[[Exception alloc] initWithFormat:"Failed to join thread [%lu]. %s",
+											  GetLastError(),
+											  "Unable to get exit code."];
+
+	CloseHandle(ctx->handle);
+	const int exitCode = (int)code;
+#else
+	void* r = NULL;
+	const int error = pthread_join(ctx->handle, &r);
+	if (error != 0)
 		@throw
 			[[Exception alloc] initWithFormat:"Failed to join thread [%i]. %s",
-											  GetLastError(),
+											  error,
 											  "Can not close thread."];
-
-	CloseHandle(data);
-#else
-	void* r;
-	if (pthread_join(data, &r) != 0)
-		@throw [[Exception alloc] initWithFormat:"Failed to join thread. %s",
-												 "Can not close thread."];
-	int result = (intptr_t)r;
-	// free(data);
+	const int exitCode = (int)(intptr_t)r;
 #endif // OS_WINDOWS
 
-	data = nil;
-	[sel dealloc];
-	sel = nil;
-	[args dealloc];
-	args = nil;
+	context = nil;
+	result = ctx->result;
+	baseThreadContextFree(ctx);
 
-	return result;
+	return exitCode;
 }
 
 - (BOOL)detach {
-	BOOL result = NO;
+	if (context == nil) return NO;
+	BaseThreadContext* ctx = context;
+	context = nil;
+
 #if OS_WINDOWS
-	result = CloseHandle(data) != 0;
+	const BOOL ok = CloseHandle(ctx->handle) != 0;
 #else
-	result = pthread_detach(data) == 0;
+	const BOOL ok = pthread_detach(ctx->handle) == 0;
 #endif // OS_WINDOWS
-	return result;
+
+	if (atomic_exchange(&ctx->state, BASE_THREAD_DETACHED)
+		== BASE_THREAD_FINISHED) {
+		baseThreadContextFree(ctx);
+	}
+	return ok;
 }
 
-- (void)exit:(int)result {
++ (void)exit:(int)code {
 #if OS_WINDOWS
-	ExitThread((DWORD)result);
+	ExitThread((DWORD)code);
 #else
-	pthread_exit((void*)(intptr_t)result);
+	pthread_exit((void*)(intptr_t)code);
 #endif // OS_WINDOWS
 }
 
-- (void)yield {
++ (void)yield {
 #if OS_WINDOWS
 	Sleep(0);
 #else

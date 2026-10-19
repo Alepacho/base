@@ -1,14 +1,28 @@
 # Base
 
 Base is a small collection of utilities for projects written in Objective-C.
-Base does not require Foundation framework (except for [macOS compatibility](https://github.com/Alepacho/base/blob/master/include/base/base.h)).
+Base does not require the Foundation framework: on macOS it only uses `NSObject` from the system `libobjc`,
+on Windows and Linux it runs on top of [libobjc2](https://github.com/gnustep/libobjc2).
 
 ## Features
 
 * Easy string manipulation
 * Simple Arrays
+* Files
+* Threads and selectors
 * System related methods
 * Exception handling
+
+## Memory management
+
+Base uses manual retain/release (compile your code with `-fno-objc-arc`):
+
+* `alloc`/`new` give you one reference, `retain` adds one, `release` drops one.
+  Never call `dealloc` directly.
+* `Array` takes over the reference passed to `push:`/`insert:` and releases its elements
+  when they are removed or when the array is destroyed.
+* `Thread` takes over the selector and the arguments passed to `create:`.
+* A caught `Exception` belongs to the `@catch` block: `release` it when you are done.
 
 ## Usage
 
@@ -16,55 +30,61 @@ Base requires the following dependencies:
 
 ```
     * clang   (at least 16)
-    * libobj2 (for Windows and Linux only)
+    * lld     (for Windows and Linux only)
+    * libobjc2 (at least 2.2, for Windows and Linux only; 2.3 is bundled as a submodule)
+    * cmake   (at least 3.27)
     * ninja   (you can also use makefile)
 ```
 
-### Windows:
+> **Note:** libobjc2 before 2.2 corrupts arguments of the first message sent to a class on
+> AArch64 (fixed upstream in gnustep/libobjc2#266).
 
-You have to compile `libobjc2` first.
+Base can be added to another CMake project with `add_subdirectory()`; link against the `base` target.
+Tests are only built when Base is the top-level project (see the `BASE_BUILD_TESTS` option).
 
-```powershell
-> git submodule update --init --recursive
-> cd 3rdparty/libobjc2/
-> mkdir build
-> cd build
-> cmake .. -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang
-> ninja
+### Windows and Linux
+
+You have to compile `libobjc2` first. Its configure step downloads
+[robin-map](https://github.com/Tessil/robin-map) unless `tsl-robin-map` is already installed.
+
+```bash
+git submodule update --init --recursive
+cd 3rdparty/libobjc2/
+mkdir build && cd build
+cmake .. -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DTESTS=OFF
+ninja
 ```
 
 And now you can make a `base` library.
 
-```powershell
-> cd ../../../
-> mkdir build
-> cd build
-> cmake .. -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang
-> ninja
-```
-
-### UNIX:
-
-Linux and other UNIX-like systems are not tested yet.
-
 ```bash
-$ I dunno...
+cd ../../../
+cmake -S . -B build -G Ninja -DCMAKE_C_COMPILER=clang
+cmake --build build
 ```
 
-### macOS:
+A libobjc2 built somewhere else can be used with `-DBASE_OBJC2_DIR=<source dir> -DBASE_OBJC2_BUILD_DIR=<build dir>`.
 
-Compilation is way simpler than on all systems above.
+### macOS
+
 Notice that you need clang 16 or above to compile it!
 
 ```bash
-$ mkdir build && cd build
-$ cmake ..
-$ make
+cmake -S . -B build
+cmake --build build
+```
+
+## Tests
+
+```bash
+cmake -S . -B build -DBASE_SANITIZE=ON   # optional: AddressSanitizer + UBSan
+cmake --build build
+ctest --test-dir build --output-on-failure
 ```
 
 ## Playground
 
-If you want to test something, use `test/` project.
+If you want to test something, use the `playground` target (`test/src/main.m`). It is built into `bin/`.
 
 ## License
 
@@ -83,3 +103,6 @@ If you want to test something, use `test/` project.
    See the License for the specific language governing permissions and
    limitations under the License.
 ```
+
+Parts of `src/thread.m` are based on [TinyCThread](https://github.com/tinycthread/tinycthread)
+(zlib license, see the notice in that file).

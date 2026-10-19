@@ -21,7 +21,7 @@
 
 - (Number*)function:(Array<Number*>*)args {
 	const Number* n = [args getFirst];
-	[System debug:"n: %i", [n value]];
+	[System debug:"n: %llu", [n value]];
 
 	int i = 0;
 	for (;;) {
@@ -47,10 +47,12 @@
 	while (i-- > 0) {
 		[System debug:"Exec function loop: %i", i];
 	}
-	int result = [t join];
-	[System debug:"Result: %i", result];
+	int code = [t join];
+	Number* result = [t result];
+	[System debug:"Exit code: %i, result: %llu", code, [result value]];
 
-	[t dealloc];
+	[result release];
+	[t release];
 }
 
 @end
@@ -106,10 +108,10 @@
 	for (int i = 0; i < c; i++)
 		[[threads getByIndex:i] join];
 
-	[System debug:"The atomic counter is %u", acnt];
-	[System debug:"The non-atomic counter is %u", cnt];
-	[System debug:"The non-atomic propery is %u", self.cntp];
-	[threads dealloc];
+	[System debug:"The atomic counter is %i", acnt];
+	[System debug:"The non-atomic counter is %i", cnt];
+	[System debug:"The non-atomic property is %i", self.cntp];
+	[threads release];
 }
 
 @end
@@ -125,7 +127,7 @@
 
 - (void)dealloc {
 	if (thread) {
-		[thread dealloc];
+		[thread release];
 		thread = nil;
 	}
 	[super dealloc];
@@ -136,11 +138,11 @@
 
 	SingleThreadTest* test1 = [SingleThreadTest new];
 	[test1 exec];
-	[test1 dealloc];
+	[test1 release];
 
 	AtomicThreadTest* test2 = [AtomicThreadTest new];
 	[test2 exec];
-	[test2 dealloc];
+	[test2 release];
 
 	[System debug:"Thread test end"];
 }

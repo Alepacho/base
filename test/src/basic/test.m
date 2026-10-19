@@ -52,13 +52,13 @@
 }
 @end
 
-BOOL array_sort(Number* a, Number* b) {
+BOOL array_sort(id a, id b) {
 	// if ([a value] != 5) return NO;
 	// if ([a value] == 6) return YES;
 	// if ([a value] == 7) return YES;
 	// if ([a value] == 5) return YES;
 	// if ([b value] == 5) return YES;
-	return [a value] > [b value];
+	return [(Number*)a value] > [(Number*)b value];
 }
 
 @implementation TestBasic
@@ -86,14 +86,14 @@ BOOL array_sort(Number* a, Number* b) {
 		[System debug:"Dog is Ent: %i", [dog isMemberOfClass:[ent class]]];
 		[System debug:"Ent is Dog: %i", [ent isMemberOfClass:[dog class]]];
 
-		[ent dealloc];
-		[dog dealloc];
-		[cat dealloc];
+		[ent release];
+		[dog release];
+		[cat release];
 	}
 
 	if (NO) {
 		[System print:"Enter character: "];
-		char ch = [System input];
+		int ch = [System input];
 		[System println:"Your character is: %c", ch];
 	}
 
@@ -101,7 +101,8 @@ BOOL array_sort(Number* a, Number* b) {
 		@try {
 			@throw [[Exception alloc] init];
 		} @catch (Exception* ex) {
-			[System warning:[ex message]];
+			[System warning:"%s", [ex message]];
+			[ex release];
 		}
 	}
 
@@ -110,7 +111,7 @@ BOOL array_sort(Number* a, Number* b) {
 	// 	[System println:"Your name is: %s", name];
 	// } @catch (Exception* ex) {
 	// 	[System error:"%s\n", [ex getMessage]];
-	// 	[ex dealloc];
+	// 	[ex release];
 	// 	return 1;
 	// }
 
@@ -125,31 +126,31 @@ BOOL array_sort(Number* a, Number* b) {
 
 	Array<Entity*>* arr = [[Array alloc] init];
 	// Array<Entity*>* arr = [Array alloc];
-	[System debug:"count: %i", [arr count]];
+	[System debug:"count: %llu", [arr count]];
 
 	[arr push:[[Entity alloc] initX:4 initY:2]];
 	[arr push:[[Entity alloc] initX:2 initY:4]];
-	[System debug:"count: %i", [arr count]];
+	[System debug:"count: %llu", [arr count]];
 
 	if (NO) {
 		[arr pop];
-		[System debug:"count: %i", [arr count]];
+		[System debug:"count: %llu", [arr count]];
 	}
 
 	if (NO) {
 		Entity* e = [arr getByIndex:69];
-		[System debug:"Entity[%lu]: { .x = %f, .y = %f }", 69, [e x], [e y]];
+		[System debug:"Entity[%i]: { .x = %f, .y = %f }", 69, [e x], [e y]];
 	}
 
 	for (size_t i = 0; i < [arr count]; i++) {
 		Entity* e = [arr getByIndex:i];
-		[System debug:"Entity[%lu]: { .x = %f, .y = %f }", i, [e x], [e y]];
+		[System debug:"Entity[%zu]: { .x = %f, .y = %f }", i, [e x], [e y]];
 	}
 
 	if (YES) {
 		Entity* e = [[Entity alloc] initX:6 initY:9];
 		[System debug:"Entity   : { .x = %f, .y = %f }", [e x], [e y]];
-		[e dealloc];
+		[e release];
 	}
 
 	if (NO) {
@@ -164,10 +165,10 @@ BOOL array_sort(Number* a, Number* b) {
 
 		for (size_t i = 0; i < [arr count]; i++) {
 			Entity* e = [arr getByIndex:i];
-			[System debug:"Entity[%lu]: { .x = %f, .y = %f }", i, [e x], [e y]];
+			[System debug:"Entity[%zu]: { .x = %f, .y = %f }", i, [e x], [e y]];
 		}
 
-		[System println:"Real size of array is: %i", [arr size]];
+		[System println:"Real size of array is: %llu", [arr size]];
 
 		[System println:"----------------------"];
 		[arr remove];
@@ -175,10 +176,10 @@ BOOL array_sort(Number* a, Number* b) {
 
 		for (size_t i = 0; i < [arr count]; i++) {
 			Entity* e = [arr getByIndex:i];
-			[System debug:"Entity[%lu]: { .x = %f, .y = %f }", i, [e x], [e y]];
+			[System debug:"Entity[%zu]: { .x = %f, .y = %f }", i, [e x], [e y]];
 		}
 
-		[System println:"Real size of array is: %i", [arr size]];
+		[System println:"Real size of array is: %llu", [arr size]];
 	}
 
 	// retain/release test
@@ -192,7 +193,7 @@ BOOL array_sort(Number* a, Number* b) {
 		// [cat setX:88];
 		for (size_t i = 0; i < [arr count]; i++) {
 			Entity* e = [arr getByIndex:i];
-			[System debug:"Entity[%lu]: { .x = %f, .y = %f }", i, [e x], [e y]];
+			[System debug:"Entity[%zu]: { .x = %f, .y = %f }", i, [e x], [e y]];
 		}
 
 		// [System debug:"Cat's health: %i", [cat health]];
@@ -209,10 +210,10 @@ BOOL array_sort(Number* a, Number* b) {
 
 		for (Size i = 0; i < [arrn count]; i++) {
 			Number* n = [arrn getByIndex:i];
-			[System debug:"Number[%lu]: %lu ", i, [n value]];
+			[System debug:"Number[%llu]: %llu ", i, [n value]];
 		}
 
-		[arrn dealloc];
+		[arrn release];
 	}
 
 	// array sort
@@ -232,11 +233,13 @@ BOOL array_sort(Number* a, Number* b) {
 
 		for (Size i = 0; i < [arrn count]; i++) {
 			Number* n = [arrn getByIndex:i];
-			[System debug:"Number[%lu]: %lu ", i, [n value]];
+			[System debug:"Number[%llu]: %llu ", i, [n value]];
 		}
 
-		[arrn dealloc];
+		[arrn release];
 	}
+
+	[arr release];
 
 	[System println:"%s", "Change the world. My final message!"];
 	[System println:"%s", "Goodbye..."];

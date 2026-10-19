@@ -1,18 +1,7 @@
 #include "base/exception.h"
 #include "base/string.h"
-#include "base/system.h"
 
 #include <stdarg.h>
-#include <stdio.h>
-#include <stdlib.h>
-
-#if OS_WINDOWS
-#define vs_string_length _vscprintf
-#define vs_string_buffer vsprintf_s
-#else
-extern int vs_string_length(const char* format, va_list pargs);
-#define vs_string_buffer vsnprintf
-#endif
 
 @implementation Exception
 
@@ -29,17 +18,12 @@ extern int vs_string_length(const char* format, va_list pargs);
 - (id)initWithFormat:(const char*)fmt, ... {
 	self = [self init];
 
-	va_list args;
-	va_start(args, fmt);
-	const size_t length = vs_string_length(fmt, args) + 1;
-	char* buffer = malloc(length * sizeof(char));
-	if (buffer == nil) {
-		[System fatal:"Unable to allocate memory for formatted string!"];
+	if (self) {
+		va_list args;
+		va_start(args, fmt);
+		[self->message setFormat:fmt arguments:args];
+		va_end(args);
 	}
-	vs_string_buffer(buffer, length, fmt, args);
-	[self->message appendBuffer:buffer];
-	free(buffer);
-	va_end(args);
 
 	return self;
 }
@@ -47,9 +31,18 @@ extern int vs_string_length(const char* format, va_list pargs);
 - (id)initWithString:(String*)str {
 	self = [self init];
 
-	[self->message setString:str];
+	if (self) {
+		[self->message setString:str];
+	}
 
 	return self;
+}
+
+- (void)dealloc {
+	[self->message release];
+	self->message = nil;
+
+	[super dealloc];
 }
 
 - (const char*)message {

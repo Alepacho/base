@@ -55,8 +55,8 @@ static TestSelectors* test;
 
 - (void)callbackArg:(id)arg {
 	[System debug:"Callback Argument!"];
-	[System debug:"Argument: %i", [(Number*)arg value]];
-	[arg dealloc];
+	[System debug:"Argument: %llu", [(Number*)arg value]];
+	[arg release];
 }
 
 + (void)execute {
@@ -78,6 +78,10 @@ static TestSelectors* test;
 
 	[[test selFoo] perform];
 	[foo func];
+
+	[[test selFoo] release];
+	[test release];
+	[foo release];
 
 	[System debug:"Selector test end"];
 }

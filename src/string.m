@@ -1,58 +1,48 @@
 #include "base/string.h"
+#include "base/exception.h"
 #include "base/system.h"
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#if OS_WINDOWS
-#define string_copy strcpy_s
-#define string_cat	strcat_s
-#else
-size_t string_copy(char* d, size_t n, char const* s) {
-	return snprintf(d, n, "%s", s);
-}
-size_t string_cat(char* d, size_t n, char const* s) {
-	return snprintf(d, n, "%s%s", d, s);
-}
-#endif
+// Formats into a new heap buffer that the caller must free().
+BASE_FORMAT(1, 0) static char* baseVFormat(const char* fmt, va_list args) {
+	va_list copy;
+	va_copy(copy, args);
+	const int length = vsnprintf(NULL, 0, fmt, copy);
+	va_end(copy);
 
-#if OS_WINDOWS
-#define vs_string_length _vscprintf
-#define vs_string_buffer vsprintf_s
-#else
-int vs_string_length(const char* format, va_list pargs) {
-	int retval;
-	va_list argcopy;
-	va_copy(argcopy, pargs);
-	retval = vsnprintf(NULL, 0, format, argcopy);
-	va_end(argcopy);
-	return retval;
+	if (length < 0)
+		@throw [[Exception alloc]
+			initWithFormat:"Invalid format string '%s'!", fmt];
+
+	char* buf = malloc((size_t)length + 1);
+	if (buf == NULL) {
+		[System fatal:"Unable to allocate memory for formatted string!"];
+	}
+	vsnprintf(buf, (size_t)length + 1, fmt, args);
+	return buf;
 }
-#define vs_string_buffer vsnprintf
-#endif
 
 @implementation String
 
 // @private
 
 - (void)initBuffer:(const char*)buf {
-	if (self->buffer != nil) {
-		free(self->buffer);
-		self->buffer = nil;
-	}
-
 	if (buf == nil) buf = "";
 
+	// Copy first and free afterwards: `buf` may point into our own buffer.
 	const size_t length = strlen(buf);
-	self->buffer = (char*)malloc((length + 1) * sizeof(char));
-	if (self->buffer == nil) {
-		[System fatal:"Unable to allocate memory for '%s' string!", buf];
+	char* newBuffer = malloc(length + 1);
+	if (newBuffer == nil) {
+		[System fatal:"Unable to allocate memory for a %zu bytes string!",
+					  length + 1];
 	}
-	// [System debug:"buf: '%s'", buf];
-	// [System debug:"length: %zu", length];
-	string_copy(self->buffer, length + 1, buf);
-	// [System debug:"self->buffer: '%s'", self->buffer];
+	memcpy(newBuffer, buf, length + 1);
+
+	free(self->buffer);
+	self->buffer = newBuffer;
 }
 
 // @public
@@ -70,7 +60,9 @@ int vs_string_length(const char* format, va_list pargs) {
 - (id)initWithBuffer:(const char*)buf {
 	self = [self init];
 
-	[self initBuffer:buf];
+	if (self) {
+		[self initBuffer:buf];
+	}
 
 	return self;
 }
@@ -78,25 +70,28 @@ int vs_string_length(const char* format, va_list pargs) {
 - (id)initWithString:(String*)str {
 	self = [self init];
 
-	[self initBuffer:[str buffer]];
+	if (self) {
+		[self initBuffer:[str buffer]];
+	}
 
 	return self;
 }
 
 - (id)initWithFormat:(const char*)fmt, ... {
-	self = [self init];
-
 	va_list args;
 	va_start(args, fmt);
-	const size_t length = vs_string_length(fmt, args) + 1;
-	char* buf = malloc(length * sizeof(char));
-	if (buf == nil) {
-		[System fatal:"Unable to allocate memory for formatted string!"];
-	}
-	vs_string_buffer(buf, length, fmt, args);
-	[self initBuffer:buf];
-	free(buf);
+	self = [self initWithFormat:fmt arguments:args];
 	va_end(args);
+
+	return self;
+}
+
+- (id)initWithFormat:(const char*)fmt arguments:(va_list)args {
+	self = [self init];
+
+	if (self) {
+		[self setFormat:fmt arguments:args];
+	}
 
 	return self;
 }
@@ -110,45 +105,52 @@ int vs_string_length(const char* format, va_list pargs) {
 }
 
 - (void)dealloc {
-	if (self->buffer != nil) {
-		free(self->buffer);
-		self->buffer = nil;
-	}
+	free(self->buffer);
+	self->buffer = nil;
 
 	[super dealloc];
 }
 
 - (id)appendBuffer:(const char*)buf {
+	if (buf == nil || buf[0] == '\0') return self;
 	if (self->buffer == nil) {
 		[self initBuffer:buf];
 		return self;
 	}
+
 	const size_t offset = strlen(self->buffer);
-	size_t length = strlen(buf);
-	if (length == 0) {
-		[System fatal:"%s", "Attempt to append empty string!"];
+	const size_t length = strlen(buf);
+
+	// `buf` may point into our own buffer which realloc() can move.
+	const BOOL isInner = buf >= self->buffer && buf <= self->buffer + offset;
+	const size_t innerOffset = isInner ? (size_t)(buf - self->buffer) : 0;
+
+	char* newBuffer = realloc(self->buffer, offset + length + 1);
+	if (newBuffer == nil) {
+		[System fatal:"Unable to allocate memory for a %zu bytes string!",
+					  offset + length + 1];
 	}
+	self->buffer = newBuffer;
+	if (isInner) buf = self->buffer + innerOffset;
 
-	size_t size = (offset + length + 1) * sizeof(char);
-	self->buffer = (char*)realloc(self->buffer, size);
-
-	// scpy(self->buffer + offset, length, buf);
-	string_cat(self->buffer, size, buf);
+	memmove(self->buffer + offset, buf, length);
+	self->buffer[offset + length] = '\0';
 	return self;
 }
 
 - (id)appendFormat:(const char*)fmt, ... {
 	va_list args;
 	va_start(args, fmt);
-	const size_t length = vs_string_length(fmt, args) + 1;
-	char* buf = malloc(length * sizeof(char));
-	if (buf == nil) {
-		[System fatal:"Unable to allocate memory for formatted string!"];
-	}
-	vs_string_buffer(buf, length, fmt, args);
+	[self appendFormat:fmt arguments:args];
+	va_end(args);
+
+	return self;
+}
+
+- (id)appendFormat:(const char*)fmt arguments:(va_list)args {
+	char* buf = baseVFormat(fmt, args);
 	[self appendBuffer:buf];
 	free(buf);
-	va_end(args);
 
 	return self;
 }
@@ -168,25 +170,21 @@ int vs_string_length(const char* format, va_list pargs) {
 - (id)setFormat:(const char*)fmt, ... {
 	va_list args;
 	va_start(args, fmt);
-	const size_t length = vs_string_length(fmt, args) + 1;
-	char* buf = malloc(length * sizeof(char));
-	if (buf == nil) {
-		[System fatal:"Unable to allocate memory for formatted string!"];
-	}
-	vs_string_buffer(buf, length, fmt, args);
-	[self initBuffer:buf];
-	free(buf);
+	[self setFormat:fmt arguments:args];
 	va_end(args);
 
 	return self;
 }
 
-- (id)setString:(String*)str {
-	if (self->buffer != nil) {
-		free(self->buffer);
-		self->buffer = nil;
-	}
+- (id)setFormat:(const char*)fmt arguments:(va_list)args {
+	char* buf = baseVFormat(fmt, args);
+	[self initBuffer:buf];
+	free(buf);
 
+	return self;
+}
+
+- (id)setString:(String*)str {
 	[self initBuffer:[str buffer]];
 	return self;
 }
@@ -196,10 +194,8 @@ int vs_string_length(const char* format, va_list pargs) {
 }
 
 - (BOOL)compareBuffer:(const char*)buf {
-	// printf("'%s'\n", buf);
-	// printf("'%s'\n", buffer);
-	// printf("%i\n", (strncmp(buffer, buf, [self length]) == 0));
-	return (strncmp(buffer, buf, [self length]) == 0) ? YES : NO;
+	if (buf == nil) return NO;
+	return (strcmp(self->buffer, buf) == 0) ? YES : NO;
 }
 
 @end

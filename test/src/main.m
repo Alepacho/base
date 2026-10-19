@@ -9,10 +9,10 @@
 
 int main(void) {
 	@try {
-		// [TestBasic execute];
+		[TestBasic execute];
 		[TestSelectors execute];
-		// [TestFiles execute];
-		// [TestThreads execute];
+		[TestFiles execute];
+		[TestThreads execute];
 
 	} @catch (Exception* ex) {
 		[System fatal:"%s", [ex message]];

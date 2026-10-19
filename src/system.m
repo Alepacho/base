@@ -1,6 +1,7 @@
 #include "base/system.h"
 #include "base/exception.h"
 
+#include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -49,7 +50,6 @@
 	va_end(args);
 	fprintf(stderr, "\n");
 	exit(1);
-	// TODO: throw exception here?
 }
 
 + (void)echo:(const char*)msg {
@@ -71,7 +71,7 @@
 	fprintf(stdout, "\n");
 }
 
-+ (char)input {
++ (int)input {
 	return getchar();
 }
 
@@ -79,7 +79,8 @@
 	// if (fgets(buffer, length, stdin) == NULL) {
 	// 	@throw [[Exception alloc] initWithFormat:"Unable to get input buffer!"];
 	// }
-	return fgets(buffer, length, stdin);
+	if (length > INT_MAX) length = INT_MAX;
+	return fgets(buffer, (int)length, stdin);
 }
 
 @end

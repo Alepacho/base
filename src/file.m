@@ -3,30 +3,65 @@
 #include "base/string.h"
 #include "base/system.h"
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #if OS_WINDOWS
 #include <io.h>
 #define F_OK			 0
 #define base_file_access _access
+#define base_file_seek	 _fseeki64
+#define base_file_tell	 _ftelli64
+typedef __int64 base_file_offset;
 #else
+#include <sys/types.h>
 #include <unistd.h>
 #define base_file_access access
-errno_t fopen_s(FILE** f, const char* name, const char* mode) {
-	errno_t ret = 0;
-	assert(f);
-	*f = fopen(name, mode);
-	if (!*f) ret = errno;
-	return ret;
-}
+#define base_file_seek	 fseeko
+#define base_file_tell	 ftello
+typedef off_t base_file_offset;
 #endif
 
-BOOL base_file_open(FILE** stream, const char* buf, const char* mode) {
-	// [System debug:"buf: %s", buf];
-	// [System debug:"mode: %s", mode];
-	errno_t err = fopen_s(stream, buf, mode);
-	return !err;
+static FILE* baseFileOpen(const char* name, const char* mode, int* err) {
+	FILE* f = nil;
+#if OS_WINDOWS
+	*err = fopen_s(&f, name, mode);
+#else
+	errno = 0;
+	f = fopen(name, mode);
+	*err = errno;
+#endif
+	return f;
+}
+
+// See the mode table in file.h
+static const char* baseFileModeString(BaseFileMode mode) {
+	const BOOL binary = (mode & BASE_FILE_BINARY) != 0;
+	const int m = mode
+				  & (BASE_FILE_READ | BASE_FILE_WRITE | BASE_FILE_APPEND
+					 | BASE_FILE_TRUNCATE);
+
+	switch (m) {
+		case BASE_FILE_READ:
+			return binary ? "rb" : "r";
+		case BASE_FILE_WRITE:
+		case BASE_FILE_WRITE | BASE_FILE_TRUNCATE:
+			return binary ? "wb" : "w";
+		case BASE_FILE_APPEND:
+		case BASE_FILE_WRITE | BASE_FILE_APPEND:
+			return binary ? "ab" : "a";
+		case BASE_FILE_READ | BASE_FILE_WRITE:
+			return binary ? "r+b" : "r+";
+		case BASE_FILE_READ | BASE_FILE_WRITE | BASE_FILE_TRUNCATE:
+			return binary ? "w+b" : "w+";
+		case BASE_FILE_READ | BASE_FILE_APPEND:
+		case BASE_FILE_READ | BASE_FILE_WRITE | BASE_FILE_APPEND:
+			return binary ? "a+b" : "a+";
+		default:
+			return nil;
+	}
 }
 
 @implementation File
@@ -35,51 +70,37 @@ BOOL base_file_open(FILE** stream, const char* buf, const char* mode) {
 
 - (void)checkFile {
 	if (![self isOpen])
-		@throw [[Exception alloc] initWithFormat:"Unable to read '%s' file: %s",
-												 [path buffer],
-												 "File is not open."];
+		@throw [[Exception alloc]
+			initWithFormat:"File '%s' is not open.", [path buffer]];
 }
 
-- (void)getFOpenMode:(String*)m {
-	[m clear];
-
-	if (mode & BASE_FILE_READ) [m appendBuffer:"r"];
-	if (mode & BASE_FILE_WRITE) [m appendBuffer:"w"];
-	if (mode & BASE_FILE_APPEND) [m appendBuffer:"a"];
-	if (mode & BASE_FILE_BINARY) [m appendBuffer:"b"];
-
-	// TODO: add + modes
+- (void)throwError:(const char*)what {
+	const int err = errno; // before anything else can overwrite it
+	@throw [[Exception alloc] initWithFormat:"Failed to %s '%s' file: %s",
+											 what,
+											 [path buffer],
+											 strerror(err)];
 }
 
 - (void)open {
-	if (![File exist:[path buffer]])
-		@throw [[Exception alloc] initWithFormat:"Failed to open '%s' file: %s",
-												 [path buffer],
-												 "File not exist."];
+	const char* m = baseFileModeString(mode);
+	if (m == nil)
+		@throw [[Exception alloc]
+			initWithFormat:"Failed to open '%s' file: invalid mode 0x%x.",
+						   [path buffer],
+						   mode];
 
-	if (mode == BASE_FILE_NONE)
-		@throw [[Exception alloc] initWithFormat:"Failed to open '%s' file: %s",
-												 [path buffer],
-												 "Mode is none."];
-
-	String* m = [String new];
-	[self getFOpenMode:m];
-
-	if (!base_file_open((FILE**)&file, [path buffer], [m buffer])) {
-		fclose(file);
-		file = nil;
+	int err = 0;
+	file = baseFileOpen([path buffer], m, &err);
+	if (file == nil) {
 		@throw [[Exception alloc]
 			initWithFormat:"Failed to open '%s' file with '%s' mode: %s",
 						   [path buffer],
-						   [m buffer],
-						   "File not exist or the mode is wrong."];
+						   m,
+						   strerror(err)];
 	}
 
-	fseek(file, 0, SEEK_END);
-	length = ftell(file);
-	fseek(file, 0, SEEK_SET);
-
-	[m dealloc];
+	if (mode & BASE_FILE_AT_END) [self seekEnd];
 }
 
 // @public
@@ -90,7 +111,6 @@ BOOL base_file_open(FILE** stream, const char* buf, const char* mode) {
 		file = nil;
 		mode = BASE_FILE_NONE;
 		path = [String new];
-		length = 0;
 	}
 	return self;
 }
@@ -98,11 +118,12 @@ BOOL base_file_open(FILE** stream, const char* buf, const char* mode) {
 - (void)dealloc {
 	[self close];
 
-	[path dealloc];
+	[path release];
 	[super dealloc];
 }
 
 + (BOOL)exist:(const char*)pathName {
+	if (pathName == nil) return NO;
 	return base_file_access(pathName, F_OK) == 0;
 }
 
@@ -111,7 +132,24 @@ BOOL base_file_open(FILE** stream, const char* buf, const char* mode) {
 }
 
 - (Size)length {
-	return length;
+	[self checkFile];
+
+	const base_file_offset pos = base_file_tell(file);
+	if (pos < 0) [self throwError:"get size of"];
+	if (base_file_seek(file, 0, SEEK_END) != 0) [self throwError:"seek in"];
+	const base_file_offset end = base_file_tell(file);
+	base_file_seek(file, pos, SEEK_SET);
+	if (end < 0) [self throwError:"get size of"];
+
+	return (Size)end;
+}
+
+- (Size)position {
+	[self checkFile];
+
+	const base_file_offset pos = base_file_tell(file);
+	if (pos < 0) [self throwError:"get position in"];
+	return (Size)pos;
 }
 
 - (void)open:(BaseFileMode)fileMode withBuffer:(const char*)pathName {
@@ -128,75 +166,95 @@ BOOL base_file_open(FILE** stream, const char* buf, const char* mode) {
 	[self open];
 }
 
-- (void)close {
-	if (![self isOpen]) return;
+- (BOOL)close {
+	if (![self isOpen]) return YES;
 
-	if (fclose(file) == EOF)
-		@throw [[Exception alloc]
-			initWithFormat:"Failed to close the file '%s'", [path buffer]];
+	// The stream is gone after fclose() whatever it returns.
+	const BOOL result = fclose(file) != EOF;
 
 	file = nil;
 	mode = BASE_FILE_NONE;
-	length = 0;
-
 	[path clear];
+
+	return result;
 }
 
 - (void)seek:(Size)pos {
 	[self checkFile];
-	fseek(file, pos, SEEK_SET);
+	if (base_file_seek(file, (base_file_offset)pos, SEEK_SET) != 0)
+		[self throwError:"seek in"];
 }
 
 - (void)seekStart {
-	[self checkFile];
-	fseek(file, 0, SEEK_SET);
+	[self seek:0];
 }
 
 - (void)seekEnd {
 	[self checkFile];
-	fseek(file, 0, SEEK_END);
+	if (base_file_seek(file, 0, SEEK_END) != 0) [self throwError:"seek in"];
 }
 
-- (char*)readWithBuffer:(char*)buf {
-	return [self readWithBuffer:buf size:length];
-}
-
-- (char*)readWithBuffer:(char*)buf size:(int)size {
+- (Size)readWithBuffer:(char*)buf size:(Size)size {
 	[self checkFile];
-	unsigned long long l = fread(buf, sizeof(char), size, file);
-	// [System debug:"l %i len %i", l, length];
-	if (feof(file) && (l < length)) {
-		buf = realloc(buf, l + 1);
-		size = l;
-	}
-	if (!(mode & BASE_FILE_BINARY)) buf[size] = '\0';
-	if (buf == NULL) {
+	if (buf == nil)
 		@throw [[Exception alloc] initWithFormat:"Unable to read file '%s'. %s",
 												 [path buffer],
 												 "Buffer is not defined!"];
-	}
-	return buf;
+
+	const Size read = fread(buf, sizeof(char), size, file);
+	if (read < size && ferror(file)) [self throwError:"read"];
+
+	if (!(mode & BASE_FILE_BINARY)) buf[read] = '\0';
+	return read;
 }
 
 - (void)readWithString:(String*)str {
-	return [self readWithString:str size:length];
+	[self checkFile];
+	[str clear];
+
+	char chunk[4096];
+	Size read;
+	while ((read = fread(chunk, sizeof(char), sizeof(chunk) - 1, file)) > 0) {
+		chunk[read] = '\0';
+		[str appendBuffer:chunk];
+	}
+	if (ferror(file)) [self throwError:"read"];
 }
 
-- (void)readWithString:(String*)str size:(int)size {
+- (void)readWithString:(String*)str size:(Size)size {
 	[self checkFile];
-	char* buf = [self readWithBuffer:malloc(size * sizeof(char) + 1) size:size];
-	[str setBuffer:buf];
+
+	char* buf = malloc(size + 1);
+	if (buf == nil) {
+		[System
+			fatal:"Unable to allocate %llu bytes to read a file!", size + 1];
+	}
+
+	const Size read = fread(buf, sizeof(char), size, file);
+	const BOOL failed = read < size && ferror(file);
+	// Always terminate: the data is used as a C string, even in binary mode.
+	buf[read] = '\0';
+	if (!failed) [str setBuffer:buf];
 	free(buf);
+
+	if (failed) [self throwError:"read"];
 }
 
-- (int)writeBuffer:(char*)buf {
+- (Size)write:(const void*)data size:(Size)size {
 	[self checkFile];
-	return fputs(buf, file);
+
+	const Size written = fwrite(data, 1, size, file);
+	if (written < size) [self throwError:"write to"];
+	return written;
 }
 
-- (int)writeString:(String*)str {
-	[self checkFile];
-	return fputs([str buffer], file);
+- (Size)writeBuffer:(const char*)buf {
+	if (buf == nil) return 0;
+	return [self write:buf size:strlen(buf)];
+}
+
+- (Size)writeString:(String*)str {
+	return [self writeBuffer:[str buffer]];
 }
 
 @end
