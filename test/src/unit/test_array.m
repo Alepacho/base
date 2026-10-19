@@ -55,6 +55,12 @@ static void testCapacity(void) {
 	CHECK([a count] == 1);
 	[a release];
 
+	// sizes whose byte count does not fit in memory, even after wrapping
+	CHECK_THROWS_MESSAGE([[Array alloc] initWithSize:(Size)1 << 61],
+						 "Out of memory");
+	CHECK_THROWS_MESSAGE([[Array alloc] initWithSize:BASE_NOT_FOUND],
+						 "Out of memory");
+
 	a = [[Array alloc] initWithSize:0];
 	CHECK([a size] == 0);
 	[a push:probe(1)];

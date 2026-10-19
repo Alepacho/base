@@ -1,42 +1,9 @@
 #import "base/base.h"
-#import "base/exception.h"
 
 #if !OS_MACOS
 #import <objc/objc-arc.h>
 #include <stdatomic.h>
 #endif
-
-#include <objc/objc-exception.h>
-#include <stdio.h>
-#include <stdlib.h>
-
-static BOOL baseIsKindOfClass(Class s, Class a) {
-	while (s != Nil) {
-		if (s == a) return YES;
-		s = class_getSuperclass(s);
-	}
-	return NO;
-}
-
-static void baseUncaughtExceptionHandler(id exception) {
-	if (exception != nil
-		&& baseIsKindOfClass(object_getClass(exception), [Exception class])) {
-		fprintf(stderr,
-				"Uncaught exception: %s\n",
-				[(Exception*)exception message]);
-	} else {
-		fprintf(stderr,
-				"Uncaught exception of class '%s'\n",
-				exception ? class_getName(object_getClass(exception)) : "nil");
-	}
-	fflush(stderr);
-	// abort() instead of exit() so the debugger / crash reporter still sees it.
-	abort();
-}
-
-__attribute__((constructor)) static void baseInit(void) {
-	objc_setUncaughtExceptionHandler(baseUncaughtExceptionHandler);
-}
 
 @implementation BaseObject
 

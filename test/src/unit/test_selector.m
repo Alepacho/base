@@ -13,7 +13,14 @@ static atomic_int voidCalls = 0;
 - (id)itself;
 - (id)countArgs:(Array*)args;
 - (void)nothing;
+- (void)take:(id)arg;
+- (BOOL)flag;
+- (int)number;
+- (id)withInt:(int)value;
+- (id)first:(id)a second:(id)b;
 @end
+
+static id taken = nil;
 
 @implementation Target
 + (id)classMethod {
@@ -38,6 +45,21 @@ static atomic_int voidCalls = 0;
 }
 - (void)nothing {
 	atomic_fetch_add(&voidCalls, 1);
+}
+- (void)take:(id)arg {
+	taken = arg;
+}
+- (BOOL)flag {
+	return YES;
+}
+- (int)number {
+	return 1;
+}
+- (id)withInt:(int)value {
+	return nil;
+}
+- (id)first:(id)a second:(id)b {
+	return a;
 }
 @end
 
@@ -130,10 +152,19 @@ static void testPerform(void) {
 	CHECK([Selector perform:@selector(class) object:sub] == [SubTarget class]);
 	[sub release];
 
-	// void methods can be called, their result is meaningless
+	// void methods can be called and give nil
 	atomic_store(&voidCalls, 0);
-	[Selector perform:@selector(nothing) object:t];
+	CHECK([Selector perform:@selector(nothing) object:t] == nil);
 	CHECK(atomic_load(&voidCalls) == 1);
+	taken = nil;
+	CHECK([Selector perform:@selector(take:) object:t argument:n] == nil);
+	CHECK(taken == n);
+
+	// a missing argument is nil, an extra one is ignored
+	taken = t;
+	[Selector perform:@selector(take:) object:t];
+	CHECK(taken == nil);
+	CHECK([Selector perform:@selector(itself) object:t argument:n] == t);
 
 	// a configured Selector
 	Selector* sel = [[Selector new] setObject:t
@@ -179,6 +210,18 @@ static void testErrors(void) {
 						 "'echo:'");
 	CHECK_THROWS([Selector perform:@selector(echo:) object:nil]);
 	CHECK_THROWS([Selector perform:NULL object:t]);
+
+	// methods that can not be called through an `id` function pointer
+	CHECK_THROWS_MESSAGE([Selector perform:@selector(flag) object:t],
+						 "not an object");
+	CHECK_THROWS_MESSAGE([Selector perform:@selector(number) object:t],
+						 "not an object");
+	CHECK_THROWS_MESSAGE([Selector perform:@selector(withInt:) object:t],
+						 "argument");
+	CHECK_THROWS_MESSAGE([Selector perform:@selector(first:second:)
+									object:t
+								  argument:t],
+						 "takes 2 arguments");
 
 	Selector* sel = [Selector new];
 	CHECK_THROWS([sel perform]); // nothing set

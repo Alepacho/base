@@ -24,6 +24,18 @@ Base uses manual retain/release (compile your code with `-fno-objc-arc`):
 * `Thread` takes over the selector and the arguments passed to `create:`.
 * A caught `Exception` belongs to the `@catch` block: `release` it when you are done.
 
+## Errors
+
+Base reports errors with exceptions and never ends the process on its own:
+
+* Running out of memory throws an `Exception` whose message starts with `Out of memory`.
+* An exception thrown by a `Thread`'s selector is rethrown by `join`. If nobody joins
+  the thread, it is printed to stderr and released.
+* `Selector` only calls methods it can call safely (object or void result, no argument
+  or one object argument) and throws for any other one.
+* Nothing is installed behind your back: call `[Exception installUncaughtHandler]` at
+  startup if you want uncaught exceptions to print their message before the process aborts.
+
 ## Usage
 
 Base requires the following dependencies:

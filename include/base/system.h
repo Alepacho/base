@@ -4,6 +4,8 @@
 
 #include "base.h"
 
+// Each message is written at once: messages printed by several threads at the
+// same time do not interleave.
 @interface System : BaseObject
 
 + (void)debug:(const char*)fmt, ... BASE_FORMAT(1, 2);

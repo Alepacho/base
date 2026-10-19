@@ -1,7 +1,8 @@
 #include "base/array.h"
 #include "base/exception.h"
-#include "base/system.h"
+#include "internal.h"
 
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -17,11 +18,14 @@
 		return;
 	}
 
-	id* newData = realloc(self->data, newSize * sizeof(id));
-	if (newData == nil) {
-		[System fatal:"Unable to allocate memory for %llu array elements!",
-					  newSize];
-	}
+	// The byte count must not wrap around (it would allocate too little).
+	if (newSize > SIZE_MAX / sizeof(id))
+		baseThrowOutOfMemory("an array can not hold %llu elements!", newSize);
+
+	id* newData = realloc(self->data, (size_t)newSize * sizeof(id));
+	if (newData == nil)
+		baseThrowOutOfMemory("unable to allocate %llu array elements!",
+							 newSize);
 	self->data = newData;
 	self->size = newSize;
 }
@@ -55,7 +59,12 @@
 - (id)initWithSize:(Size)newSize {
 	self = [self init];
 	if (self) {
-		[self resize:newSize];
+		@try {
+			[self resize:newSize];
+		} @catch (id ex) {
+			[self release];
+			@throw;
+		}
 	}
 	return self;
 }
@@ -196,10 +205,9 @@
 
 	// Bottom-up merge sort: stable, O(n log n), no recursion and it never
 	// reads out of bounds even with a non-strict comparator.
-	id* tmp = malloc(n * sizeof(id));
-	if (tmp == nil) {
-		[System fatal:"Unable to allocate memory to sort %llu elements!", n];
-	}
+	id* tmp = malloc((size_t)n * sizeof(id)); // n <= size, cannot overflow
+	if (tmp == nil)
+		baseThrowOutOfMemory("unable to sort %llu array elements!", n);
 
 	id* src = self->data;
 	id* dst = tmp;

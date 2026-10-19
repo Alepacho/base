@@ -248,14 +248,33 @@ static void testBinary(void) {
 	CHECK(memcmp(buf, data, size) == 0);
 	CHECK(buf[size] == 'x'); // nothing appended in binary mode
 
-	// a String stops at the first NUL but is always terminated
+	// a String keeps every byte, NULs included, and is always terminated
 	String* str = [String new];
 	[file seekStart];
 	[file readWithString:str];
-	CHECK([str compareBuffer:"a"]);
+	CHECK([str length] == size);
+	CHECK(memcmp([str buffer], data, size) == 0);
+	CHECK([str buffer][size] == '\0');
 	[file seekStart];
-	[file readWithString:str size:size];
-	CHECK([str compareBuffer:"a"]);
+	[file readWithString:str size:3];
+	CHECK([str length] == 3);
+	CHECK(memcmp([str buffer], data, 3) == 0);
+	[file readWithString:str size:BASE_NOT_FOUND]; // no huge allocation
+	CHECK([str length] == size - 3);
+	CHECK(memcmp([str buffer], data + 3, size - 3) == 0);
+	[file close];
+
+	// NULs across the internal read chunk boundaries
+	static char big[10000];
+	for (int i = 0; i < 10000; i++)
+		big[i] = (char)(i % 7 == 0 ? 0 : i);
+	[file open:BASE_FILE_WRITE | BASE_FILE_BINARY withBuffer:path];
+	[file write:big size:sizeof(big)];
+	[file close];
+	[file open:BASE_FILE_READ | BASE_FILE_BINARY withBuffer:path];
+	[file readWithString:str];
+	CHECK([str length] == sizeof(big));
+	CHECK(memcmp([str buffer], big, sizeof(big)) == 0);
 	[file close];
 
 	// writeString / writeBuffer

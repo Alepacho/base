@@ -18,6 +18,11 @@
 // and releases them once the thread has been joined (or has finished, if
 // detached). If `create:` throws, they still belong to the caller.
 // An unjoined, undetached thread is joined when the Thread is destroyed.
+//
+// Exceptions: an exception thrown by the selector is rethrown by `join` (and
+// then belongs to the caller, like any caught exception). If nobody joins the
+// thread (it was detached, or the Thread was released), the exception is
+// printed to stderr and released; the process keeps running.
 @interface Thread : BaseObject {
 	void* context;
 	id result;
@@ -38,7 +43,8 @@
 - (void)create:(Selector*)selector args:(Array*)arguments;
 
 // Waits for the thread and returns its exit code: 0 when the selector
-// returned normally, or the value passed to `+exit:`.
+// returned normally, or the value passed to `+exit:`. Rethrows the exception
+// thrown by the selector, if any; the thread is joined all the same.
 - (int)join;
 // Lets the thread run on its own. Returns NO if it was not running.
 - (BOOL)detach;

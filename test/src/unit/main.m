@@ -41,6 +41,7 @@ static void exitOnAbort(int sig) {
 
 static int runMode(const char* mode) {
 	signal(SIGABRT, exitOnAbort);
+	if (strcmp(mode, "fatal") != 0) [Exception installUncaughtHandler];
 
 	if (strcmp(mode, "fatal") == 0) {
 		[System fatal:"bye %d", 42];

@@ -30,6 +30,7 @@
 #include "base/array.h"
 #include "base/exception.h"
 #include "base/selector.h"
+#include "internal.h"
 
 #include <stdatomic.h>
 #include <stdint.h>
@@ -60,13 +61,31 @@ typedef struct {
 	Selector* sel;
 	Array* args;
 	id result;
+	// Thrown by the selector, handed over to `join`.
+	id exception;
 	atomic_int state;
 } BaseThreadContext;
 
+// An exception that `join` did not take over has nobody to catch it.
 static void baseThreadContextFree(BaseThreadContext* ctx) {
+	if (ctx->exception != nil) {
+		baseReportException("Uncaught exception in a detached thread",
+							ctx->exception);
+		baseReleaseException(ctx->exception);
+	}
 	[ctx->sel release];
 	[ctx->args release];
 	free(ctx);
+}
+
+static void baseThreadRun(BaseThreadContext* ctx) {
+	// `+exit:` is not an exception: it unwinds (if at all) as a forced unwind,
+	// which @catch does not stop.
+	@try {
+		ctx->result = [ctx->sel performWithArgs:ctx->args];
+	} @catch (id ex) {
+		ctx->exception = ex;
+	}
 }
 
 #if OS_WINDOWS
@@ -76,7 +95,7 @@ static void* baseThreadFunction(void* params)
 #endif // OS_WINDOWS
 {
 	BaseThreadContext* ctx = (BaseThreadContext*)params;
-	ctx->result = [ctx->sel performWithArgs:ctx->args];
+	baseThreadRun(ctx);
 
 	// Whoever comes last (this thread or `detach`) frees the context.
 	// A joined context is freed by `join`.
@@ -99,7 +118,16 @@ static void* baseThreadFunction(void* params)
 }
 
 - (void)dealloc {
-	[self join];
+	// dealloc must not throw: report what `join` would have thrown.
+	@try {
+		[self join];
+	} @catch (id ex) {
+		baseReportException("Uncaught exception in a released thread", ex);
+		baseReleaseException(ex);
+		// The thread could not be joined (e.g. it released its own Thread),
+		// let it clean up after itself.
+		[self detach];
+	}
 	[super dealloc];
 }
 
@@ -137,6 +165,7 @@ static void* baseThreadFunction(void* params)
 	ctx->sel = selector;
 	ctx->args = arguments;
 	ctx->result = nil;
+	ctx->exception = nil;
 	atomic_init(&ctx->state, BASE_THREAD_RUNNING);
 	result = nil;
 
@@ -191,8 +220,11 @@ static void* baseThreadFunction(void* params)
 
 	context = nil;
 	result = ctx->result;
+	id exception = ctx->exception;
+	ctx->exception = nil;
 	baseThreadContextFree(ctx);
 
+	if (exception != nil) @throw exception;
 	return exitCode;
 }
 
@@ -233,11 +265,11 @@ static void* baseThreadFunction(void* params)
 @end
 
 #if OS_WINDOWS
-// Critical sections are always recursive, `alreadyLocked` makes a plain
-// mutex behave like one.
-typedef struct {
+// A plain mutex is an SRW lock: like a default pthread mutex it can not be
+// acquired twice, even by its owner. Critical sections are always recursive.
+typedef union {
+	SRWLOCK srw;
 	CRITICAL_SECTION cs;
-	BOOL alreadyLocked;
 } BaseMutex;
 #else
 typedef pthread_mutex_t BaseMutex;
@@ -258,13 +290,15 @@ typedef pthread_mutex_t BaseMutex;
 		BaseMutex* m = calloc(1, sizeof(BaseMutex));
 		if (m == nil) {
 			[self release];
-			@throw [[Exception alloc]
-				initWithFormat:"Failed to create mutex. %s", "Out of memory."];
+			baseThrowOutOfMemory("unable to create a mutex!");
 		}
 
 #if OS_WINDOWS
-		InitializeCriticalSection(&m->cs);
-		m->alreadyLocked = NO;
+		if (recursive) {
+			InitializeCriticalSection(&m->cs);
+		} else {
+			InitializeSRWLock(&m->srw);
+		}
 		const int error = 0;
 #else
 		pthread_mutexattr_t attr;
@@ -294,7 +328,8 @@ typedef pthread_mutex_t BaseMutex;
 	BaseMutex* m = handle;
 	if (m) {
 #if OS_WINDOWS
-		DeleteCriticalSection(&m->cs);
+		// SRW locks need no cleanup
+		if (recursive) DeleteCriticalSection(&m->cs);
 #else
 		pthread_mutex_destroy(m);
 #endif // OS_WINDOWS
@@ -310,12 +345,10 @@ typedef pthread_mutex_t BaseMutex;
 - (void)lock {
 	BaseMutex* m = handle;
 #if OS_WINDOWS
-	EnterCriticalSection(&m->cs);
-	if (!recursive) {
-		// Locked again by the owner: deadlock, as pthreads would.
-		while (m->alreadyLocked)
-			Sleep(1000);
-		m->alreadyLocked = YES;
+	if (recursive) {
+		EnterCriticalSection(&m->cs);
+	} else {
+		AcquireSRWLockExclusive(&m->srw);
 	}
 #else
 	const int error = pthread_mutex_lock(m);
@@ -328,15 +361,8 @@ typedef pthread_mutex_t BaseMutex;
 - (BOOL)tryLock {
 	BaseMutex* m = handle;
 #if OS_WINDOWS
-	if (!TryEnterCriticalSection(&m->cs)) return NO;
-	if (!recursive) {
-		if (m->alreadyLocked) {
-			LeaveCriticalSection(&m->cs);
-			return NO;
-		}
-		m->alreadyLocked = YES;
-	}
-	return YES;
+	if (recursive) return TryEnterCriticalSection(&m->cs) ? YES : NO;
+	return TryAcquireSRWLockExclusive(&m->srw) ? YES : NO;
 #else
 	const int error = pthread_mutex_trylock(m);
 	if (error == EBUSY) return NO;
@@ -350,8 +376,11 @@ typedef pthread_mutex_t BaseMutex;
 - (void)unlock {
 	BaseMutex* m = handle;
 #if OS_WINDOWS
-	m->alreadyLocked = NO;
-	LeaveCriticalSection(&m->cs);
+	if (recursive) {
+		LeaveCriticalSection(&m->cs);
+	} else {
+		ReleaseSRWLockExclusive(&m->srw);
+	}
 #else
 	const int error = pthread_mutex_unlock(m);
 	if (error != 0)

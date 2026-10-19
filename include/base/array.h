@@ -12,6 +12,7 @@ typedef BOOL (*_BaseSortFn)(id a, id b);
 // or when the array is destroyed. `retain` an element to keep it alive.
 //
 // Methods taking an index throw an Exception when it is out of range.
+// Running out of memory throws an Exception, the array is then unchanged.
 //
 // * subtypes are acceptable
 @interface Array<__covariant T> : BaseObject {

@@ -6,10 +6,12 @@
 #include "array.h"
 #include "base.h"
 
-// Calls a method by its selector. The method must take zero or one object
-// argument; its return value is only meaningful when it returns an object.
-// Works with instance and class objects. Throws an Exception when the object
-// does not respond to the selector.
+// Calls a method by its selector. Works with instance and class objects.
+//
+// The method must return an object (or a Class), or nothing, and take either
+// no argument or one object argument; the argument is ignored by methods that
+// take none, and void methods give `nil`. An Exception is thrown when the
+// object does not respond to the selector or the method has another type.
 //
 // Selector does not own the object, the argument or the result.
 @interface Selector<__covariant T> : BaseObject {

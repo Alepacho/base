@@ -14,6 +14,7 @@ static atomic_int workerDone = 0;
 - (id)quit:(Array<Number*>*)args;
 - (id)wait:(Array*)args;
 - (id)hammer:(Array*)args;
+- (id)fail:(Array*)args;
 - (int)counter;
 - (BOOL)entered;
 - (void)open;
@@ -49,6 +50,9 @@ static atomic_int workerDone = 0;
 		[object release];
 	}
 	return nil;
+}
+- (id)fail:(Array*)args {
+	@throw [[Exception alloc] initWithFormat:"failed with %llu", [args count]];
 }
 - (int)counter {
 	return atomic_load(&counter);
@@ -153,6 +157,45 @@ static void testJoin(void) {
 	CHECK([w counter] == 1000);
 
 	[t release];
+	[w release];
+}
+
+static void testExceptions(void) {
+	Worker* w = [Worker new];
+	Thread* t = [Thread new];
+
+	// join rethrows what the selector threw, after cleaning up
+	atomic_store(&probeDeallocs, 0);
+	[t create:job(w, @selector(fail:)) args:numbers(2)];
+	CHECK_THROWS_MESSAGE([t join], "failed with 2");
+	CHECK(atomic_load(&probeDeallocs) == 2);
+	CHECK([t args] == nil);
+	CHECK([t result] == nil);
+	CHECK([t join] == 0); // nothing left to join
+
+	// the Thread can be reused
+	[t create:job(w, @selector(sum:)) args:numbers(3)];
+	CHECK([t join] == 0);
+	Number* sum = [t result];
+	CHECK([sum value] == 6);
+	[sum release];
+
+	// nobody joins: the exception is reported, the process keeps running
+	atomic_store(&probeDeallocs, 0);
+	[t create:job(w, @selector(fail:)) args:numbers(1)];
+	CHECK([t detach]);
+	for (int i = 0; i < 1000000 && atomic_load(&probeDeallocs) == 0; i++)
+		[Thread yield];
+	CHECK(atomic_load(&probeDeallocs) == 1);
+	[t release];
+
+	// releasing an unjoined thread does not throw out of dealloc
+	atomic_store(&probeDeallocs, 0);
+	t = [Thread new];
+	[t create:job(w, @selector(fail:)) args:numbers(1)];
+	[t release];
+	CHECK(atomic_load(&probeDeallocs) == 1);
+
 	[w release];
 }
 
@@ -320,6 +363,7 @@ void testThread(void) {
 	testRunning();
 	testJoin();
 	testDetach();
+	testExceptions();
 	testConcurrency();
 	testMutex();
 }

@@ -160,10 +160,68 @@ static void testAliasing(void) {
 	[s release];
 }
 
+static void testBinary(void) {
+	const char data[] = { 'a', '\0', 'b' };
+
+	String* s = [[String alloc] initWithBuffer:data length:3];
+	CHECK([s length] == 3);
+	CHECK(memcmp([s buffer], data, 3) == 0);
+	CHECK([s buffer][3] == '\0');
+	CHECK(![s compareBuffer:"a"]); // compared with its full length
+
+	String* copy = [[String alloc] initWithString:s];
+	CHECK([copy length] == 3);
+	CHECK(memcmp([copy buffer], data, 3) == 0);
+
+	[copy setString:nil];
+	[copy appendBuffer:data length:3];
+	[copy appendBuffer:"" length:0];
+	[copy appendBuffer:nil length:5];
+	[copy appendBuffer:data length:3];
+	CHECK([copy length] == 6);
+	CHECK(memcmp([copy buffer], "a\0ba\0b", 6) == 0);
+
+	// appending itself, NULs included
+	[copy appendBuffer:[copy buffer] length:[copy length]];
+	CHECK([copy length] == 12);
+	CHECK(memcmp([copy buffer] + 6, "a\0ba\0b", 6) == 0);
+	[copy setBuffer:[copy buffer] + 2 length:2];
+	CHECK([copy length] == 2);
+	CHECK(memcmp([copy buffer], "ba", 2) == 0);
+	[copy setBuffer:data length:1];
+	CHECK([copy compareBuffer:"a"]);
+
+	// formats can produce NULs too
+	[copy setFormat:"%c%c", 'x', 0];
+	CHECK([copy length] == 2);
+	[copy appendFormat:"%c", 0];
+	CHECK([copy length] == 3);
+
+	[copy clear];
+	CHECK([copy length] == 0);
+	CHECK([copy buffer][0] == '\0');
+
+	[copy release];
+	[s release];
+}
+
+static void testGrowth(void) {
+	// appending one byte at a time is linear: this would take minutes with
+	// a strlen() and a realloc() per append
+	String* s = [String new];
+	for (int i = 0; i < 2000000; i++)
+		[s appendChar:'x'];
+	CHECK([s length] == 2000000);
+	CHECK([s buffer][1999999] == 'x' && [s buffer][2000000] == '\0');
+	[s release];
+}
+
 void testString(void) {
 	testInit();
 	testCompare();
 	testAppend();
 	testSet();
 	testAliasing();
+	testBinary();
+	testGrowth();
 }

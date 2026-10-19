@@ -1,7 +1,6 @@
 #include "base/file.h"
 #include "base/exception.h"
 #include "base/string.h"
-#include "base/system.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -103,6 +102,25 @@ static const char* baseFileModeString(BaseFileMode mode) {
 	if (mode & BASE_FILE_AT_END) [self seekEnd];
 }
 
+// Replaces the contents of `str` with up to `limit` bytes read from the
+// current position.
+- (void)read:(String*)str limit:(Size)limit {
+	[self checkFile];
+	[str clear];
+
+	char chunk[4096];
+	Size total = 0;
+	while (total < limit) {
+		const Size left = limit - total;
+		const size_t want = left < sizeof(chunk) ? (size_t)left : sizeof(chunk);
+		const size_t got = fread(chunk, 1, want, file);
+		[str appendBuffer:chunk length:got];
+		total += got;
+		if (got < want) break;
+	}
+	if (ferror(file)) [self throwError:"read"];
+}
+
 // @public
 
 - (id)init {
@@ -110,7 +128,12 @@ static const char* baseFileModeString(BaseFileMode mode) {
 	if (self) {
 		file = nil;
 		mode = BASE_FILE_NONE;
-		path = [String new];
+		@try {
+			path = [String new];
+		} @catch (id ex) {
+			[self release];
+			@throw;
+		}
 	}
 	return self;
 }
@@ -209,35 +232,11 @@ static const char* baseFileModeString(BaseFileMode mode) {
 }
 
 - (void)readWithString:(String*)str {
-	[self checkFile];
-	[str clear];
-
-	char chunk[4096];
-	Size read;
-	while ((read = fread(chunk, sizeof(char), sizeof(chunk) - 1, file)) > 0) {
-		chunk[read] = '\0';
-		[str appendBuffer:chunk];
-	}
-	if (ferror(file)) [self throwError:"read"];
+	[self read:str limit:BASE_NOT_FOUND];
 }
 
 - (void)readWithString:(String*)str size:(Size)size {
-	[self checkFile];
-
-	char* buf = malloc(size + 1);
-	if (buf == nil) {
-		[System
-			fatal:"Unable to allocate %llu bytes to read a file!", size + 1];
-	}
-
-	const Size read = fread(buf, sizeof(char), size, file);
-	const BOOL failed = read < size && ferror(file);
-	// Always terminate: the data is used as a C string, even in binary mode.
-	buf[read] = '\0';
-	if (!failed) [str setBuffer:buf];
-	free(buf);
-
-	if (failed) [self throwError:"read"];
+	[self read:str limit:size];
 }
 
 - (Size)write:(const void*)data size:(Size)size {

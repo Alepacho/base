@@ -59,9 +59,11 @@ typedef enum {
 // the file). In text mode `buf` must hold `size + 1` bytes and is always
 // NUL-terminated; in binary mode nothing is appended.
 - (Size)readWithBuffer:(char*)buf size:(Size)size;
-// Reads everything from the current position up to the end of the file.
+// Replaces the contents of `str` with everything from the current position
+// up to the end of the file. Binary data, NUL bytes included, is kept as is.
+// If reading fails, `str` holds what was read before the error.
 - (void)readWithString:(String*)str;
-// Reads up to `size` bytes.
+// Same, but reads up to `size` bytes.
 - (void)readWithString:(String*)str size:(Size)size;
 
 - (Size)write:(const void*)data size:(Size)size;
