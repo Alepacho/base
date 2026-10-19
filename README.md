@@ -82,6 +82,9 @@ cmake --build build
 ctest --test-dir build --output-on-failure
 ```
 
+Unit tests live in `test/src/unit/`, one file per module. `System`'s `fatal:` and the uncaught
+exception handler end the process, so they run as separate ctest tests that check the output.
+
 ## Playground
 
 If you want to test something, use the `playground` target (`test/src/main.m`). It is built into `bin/`.
