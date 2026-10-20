@@ -7,6 +7,7 @@
 #include "unit.h"
 
 #include <signal.h>
+#include <stdlib.h>
 
 static int checks = 0;
 static int failures = 0;
@@ -40,6 +41,11 @@ static void exitOnAbort(int sig) {
 }
 
 static int runMode(const char* mode) {
+#ifdef _WIN32
+	// The debug CRT's abort() shows a modal "abort() has been called" dialog
+	// before raising SIGABRT, which hangs a non-interactive run.
+	_set_abort_behavior(0, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
+#endif
 	signal(SIGABRT, exitOnAbort);
 	if (strcmp(mode, "fatal") != 0) [Exception installUncaughtHandler];
 

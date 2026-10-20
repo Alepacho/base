@@ -51,6 +51,9 @@ add_test(NAME base_tests_uncaught_foreign COMMAND base_tests uncaught-foreign)
 set_tests_properties(base_tests_uncaught_foreign PROPERTIES
     PASS_REGULAR_EXPRESSION "Uncaught exception of class 'Number'"
     FAIL_REGULAR_EXPRESSION "returned")
+# A crash dialog must fail the test, not hang it.
+set_tests_properties(base_tests_fatal base_tests_uncaught
+    base_tests_uncaught_foreign PROPERTIES TIMEOUT 30)
 
 # On AArch64 Linux, libgcc's _Unwind_RaiseException() does not return
 # _URC_END_OF_STACK for an uncaught exception (LLVM libunwind does), so
