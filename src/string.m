@@ -264,6 +264,11 @@ static char* baseVFormat(const char* fmt, va_list args, size_t* outLength) {
 			   : NO;
 }
 
++ (BOOL)compareBuffer:(const char*)buf withBuffer:(const char*)buf2 {
+	if (buf == NULL || buf2 == NULL) return NO;
+	return strcmp(buf, buf2) == 0 ? YES : NO;
+}
+
 - (BOOL)isEqual:(id)object {
 	if (self == object) return YES;
 	if (object == nil || ![object isKindOfClass:[String class]]) return NO;

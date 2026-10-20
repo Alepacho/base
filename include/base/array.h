@@ -24,8 +24,9 @@ typedef BOOL (*BaseSortFn)(id a, id b);
 - (id)init;
 - (id)initWithSize:(BaseSize)newSize;
 - (void)dealloc;
-
+// length?
 - (BaseSize)count;
+// capacity?
 - (BaseSize)size;
 
 // Releases all elements.

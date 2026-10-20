@@ -53,12 +53,14 @@
 
 // Full equality check with a C string, `nil` is never equal.
 - (BOOL)compareBuffer:(const char*)buf;
++ (BOOL)compareBuffer:(const char*)buf withBuffer:(const char*)buf2;
 
 // Strings are equal when they hold the same bytes.
 - (BOOL)isEqual:(id)object;
 - (BaseSize)hash;
 - (id)copy;
 - (String*)copyDescription;
+
 @end
 
 #endif // BASE_STRING_H
